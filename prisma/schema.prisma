@@ -1,0 +1,685 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  CLINIC_ADMIN
+  VET
+  RECEPTIONIST
+  GROOMER
+  INVENTORY
+  ADOPTION_MANAGER
+  CLIENT
+}
+
+enum TenantPlan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum PetSpecies {
+  DOG
+  CAT
+  BIRD
+  RABBIT
+  HAMSTER
+  REPTILE
+  OTHER
+}
+
+enum PetSex {
+  MALE
+  FEMALE
+}
+
+enum AppointmentType {
+  CONSULTATION
+  VACCINATION
+  AESTHETICS
+  SURGERY
+  CHECKUP
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum VaccinationStatus {
+  SCHEDULED
+  ADMINISTERED
+  OVERDUE
+}
+
+enum SurgeryStatus {
+  SCHEDULED
+  PRE_OP
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AestheticStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AdoptionStatus {
+  AVAILABLE
+  PENDING
+  APPROVED
+  REJECTED
+  ADOPTED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+  SMS
+  IN_APP
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  plan        TenantPlan @default(FREE)
+  logoUrl     String?
+  phone       String?
+  address     String?
+  email       String?
+  website     String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  users              User[]
+  pets               Pet[]
+  appointments       Appointment[]
+  products           Product[]
+  productBatches     ProductBatch[]
+  stockMovements     StockMovement[]
+  orders             Order[]
+  payments           Payment[]
+  orderItems         OrderItem[]
+  adoptions          Adoption[]
+  notifications      Notification[]
+  AuditLog           AuditLog[]
+  clinicHours             ClinicHours[]
+  staffSchedules          StaffSchedule[]
+  blocks                 Block[]
+  holidays               Holiday[]
+  notificationTemplates  NotificationTemplate[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole
+  phone        String?
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  pushToken    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pets                Pet[]                @relation("PetOwner")
+  vetAppointments     Appointment[]        @relation("AppointmentVet")
+  groomerAppointments Appointment[]        @relation("AppointmentGroomer")
+  medicalRecords      MedicalRecord[]
+  vaccinations        Vaccination[]
+  aestheticServices   AestheticService[]
+  surgeries           Surgery[]
+  orders              Order[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  refreshTokens       RefreshToken[]
+  staffSchedules      StaffSchedule[]
+  blocks              Block[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Pet {
+  id          String     @id @default(uuid())
+  tenantId    String
+  ownerId     String
+  name        String
+  species     PetSpecies
+  breed       String?
+  sex         PetSex
+  birthDate   DateTime?
+  weight      Float?
+  photoUrl    String?
+  microchip   String?
+  color       String?
+  isNeutered  Boolean    @default(false)
+  allergies   String?
+  notes       String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner           User               @relation("PetOwner", fields: [ownerId], references: [id])
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+  vaccinations    Vaccination[]
+  aestheticServices AestheticService[]
+  surgeries       Surgery[]
+  adoptions       Adoption[]
+
+  @@index([tenantId])
+  @@index([ownerId])
+  @@map("pets")
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  tenantId        String
+  petId           String
+  vetId           String?
+  groomerId       String?
+  type            AppointmentType
+  status          AppointmentStatus @default(SCHEDULED)
+  scheduledAt     DateTime
+  durationMinutes Int               @default(30)
+  notes           String?
+  cancelReason    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pet           Pet             @relation(fields: [petId], references: [id])
+  vet           User?           @relation("AppointmentVet", fields: [vetId], references: [id])
+  groomer       User?           @relation("AppointmentGroomer", fields: [groomerId], references: [id])
+  medicalRecord MedicalRecord?
+  vaccination   Vaccination?
+  aesthetic     AestheticService?
+  surgery       Surgery?
+  auditLogs     AppointmentAuditLog[]
+
+  @@index([tenantId])
+  @@index([petId])
+  @@index([vetId])
+  @@index([scheduledAt])
+  @@map("appointments")
+}
+
+model ClinicHours {
+  id        String   @id @default(uuid())
+  tenantId  String
+  dayOfWeek Int      // 0=Sun, 6=Sat
+  openTime  String   // "09:00"
+  closeTime String   // "17:00"
+  isClosed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, dayOfWeek])
+  @@index([tenantId])
+  @@map("clinic_hours")
+}
+
+model StaffSchedule {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  dayOfWeek   Int      // 0-6
+  startTime   String   // "09:00"
+  endTime     String   // "17:00"
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, dayOfWeek])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("staff_schedules")
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String?  // null = clinic-wide block
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([startAt])
+  @@map("blocks")
+}
+
+model Holiday {
+  id        String   @id @default(uuid())
+  tenantId  String
+  date      DateTime @db.Date
+  name      String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+  @@map("holidays")
+}
+
+model AppointmentAuditLog {
+  id             String            @id @default(uuid())
+  appointmentId  String
+  fromStatus     AppointmentStatus?
+  toStatus       AppointmentStatus
+  changedBy      String?
+  createdAt      DateTime          @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@map("appointment_audit_logs")
+}
+
+model MedicalRecord {
+  id             String   @id @default(uuid())
+  tenantId       String
+  petId          String
+  vetId          String
+  appointmentId  String?  @unique
+  chiefComplaint String
+  diagnosis      String
+  treatment      String
+  prescriptions  String?
+  notes          String?
+  attachments    String[]  // legacy URLs; prefer fileAttachments
+  weight         Float?
+  temperature    Float?
+  heartRate      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  pet              Pet                     @relation(fields: [petId], references: [id])
+  vet              User                     @relation(fields: [vetId], references: [id])
+  appointment      Appointment?            @relation(fields: [appointmentId], references: [id])
+  fileAttachments  MedicalRecordAttachment[]
+
+  @@index([petId])
+  @@index([vetId])
+  @@index([tenantId])
+  @@map("medical_records")
+}
+
+model MedicalRecordAttachment {
+  id           String   @id @default(uuid())
+  tenantId     String
+  medicalRecordId String
+  key          String   // S3 key
+  filename     String
+  contentType  String
+  size         Int      // bytes
+  uploadedBy   String
+  createdAt    DateTime @default(now())
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([medicalRecordId])
+  @@map("medical_record_attachments")
+}
+
+model Vaccination {
+  id             String            @id @default(uuid())
+  tenantId       String
+  petId          String
+  vetId          String
+  appointmentId  String?           @unique
+  vaccineName    String
+  manufacturer   String?
+  batchNumber    String?
+  dose           Int               @default(1)
+  administeredAt DateTime
+  nextDueAt      DateTime?
+  status         VaccinationStatus @default(ADMINISTERED)
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  pet         Pet          @relation(fields: [petId], references: [id])
+  vet         User         @relation(fields: [vetId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([petId])
+  @@index([nextDueAt])
+  @@map("vaccinations")
+}
+
+model AestheticService {
+  id            String          @id @default(uuid())
+  tenantId      String
+  petId         String
+  groomerId     String
+  appointmentId String?         @unique
+  serviceName   String
+  status        AestheticStatus @default(SCHEDULED)
+  scheduledAt   DateTime
+  price         Float?
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  pet         Pet          @relation(fields: [petId], references: [id])
+  groomer     User         @relation(fields: [groomerId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([petId])
+  @@index([groomerId])
+  @@map("aesthetic_services")
+}
+
+model Surgery {
+  id                String        @id @default(uuid())
+  tenantId          String
+  petId             String
+  vetId             String
+  appointmentId     String?       @unique
+  type              String
+  status            SurgeryStatus @default(SCHEDULED)
+  scheduledAt       DateTime
+  consentSignedAt   DateTime?
+  consentSignedBy   String?
+  preInstructions   String?
+  postInstructions  String?
+  postOpNotes       String?
+  notes             String?
+  anesthesiaType    String?
+  durationMinutes   Int?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  pet         Pet          @relation(fields: [petId], references: [id])
+  vet         User         @relation(fields: [vetId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([petId])
+  @@index([vetId])
+  @@map("surgeries")
+}
+
+model Product {
+  id                String   @id @default(uuid())
+  tenantId          String
+  name              String
+  sku               String
+  description       String?
+  category          String
+  price             Float
+  stock             Int      @default(0)
+  lowStockThreshold Int      @default(5)
+  imageUrl          String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
+  batches        ProductBatch[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([tenantId, category])
+  @@map("products")
+}
+
+model ProductBatch {
+  id           String    @id @default(uuid())
+  tenantId     String
+  productId    String
+  batchNumber  String
+  quantity     Int
+  expiryDate   DateTime? @db.Date
+  createdAt    DateTime  @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId])
+  @@index([expiryDate])
+  @@map("product_batches")
+}
+
+model StockMovement {
+  id        String            @id @default(uuid())
+  tenantId  String
+  productId String
+  type      StockMovementType
+  quantity  Int
+  reason    String?
+  userId    String?
+  createdAt DateTime          @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@index([productId])
+  @@map("stock_movements")
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  tenantId  String
+  clientId  String
+  subtotal  Float
+  tax       Float       @default(0)
+  total     Float
+  status    OrderStatus @default(PENDING)
+  notes     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   User        @relation(fields: [clientId], references: [id])
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@map("orders")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  tenantId    String
+  orderId     String
+  amount      Float
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  externalId  String?       // id from payment provider (no real integration)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@map("payments")
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  tenantId  String
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Float
+  total     Float
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@map("order_items")
+}
+
+model Adoption {
+  id             String        @id @default(uuid())
+  tenantId       String
+  petId          String
+  applicantId    String?
+  status         AdoptionStatus @default(AVAILABLE)
+  applicantName  String?
+  applicantEmail String?
+  applicantPhone String?
+  notes          String?
+  rejectionReason String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pet    Pet    @relation(fields: [petId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("adoptions")
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  tenantId  String
+  userId    String
+  title     String
+  body      String
+  channel   NotificationChannel
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([readAt])
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id           String              @id @default(uuid())
+  tenantId     String?              // null = system template
+  key          String               // e.g. appointment_reminder
+  channel      NotificationChannel
+  subject      String?              // for email
+  bodyTemplate String               // handlebars-style placeholders
+  isSystem     Boolean              @default(false)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key, channel])
+  @@index([tenantId])
+  @@map("notification_templates")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldData   Json?
+  newData   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
