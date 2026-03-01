@@ -4,7 +4,8 @@
   "description": "NuVet API – NestJS multi-tenant backend",
   "scripts": {
     "postinstall": "prisma generate",
-    "build": "prisma generate && nest build",
+    "build:types": "tsc -p types/tsconfig.json",
+    "build": "prisma generate && pnpm run build:types && nest build",
     "dev": "nest start --watch",
     "start": "node dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
