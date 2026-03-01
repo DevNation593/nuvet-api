@@ -19,9 +19,7 @@
     "noFallthroughCasesInSwitch": false
   },
   "include": [
-    "src/**/*",
-    "prisma/seed.ts",
-    "prisma/seed.full.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

@@ -12,8 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:seed:full": "ts-node prisma/seed.full.ts"
+    "prisma:seed": "ts-node --project tsconfig.seed.json prisma/seed.ts",
+    "prisma:seed:full": "ts-node --project tsconfig.seed.json prisma/seed.full.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.995.0",
