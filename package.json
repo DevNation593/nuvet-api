@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "NuVet API – NestJS multi-tenant backend",
   "scripts": {
-    "build": "nest build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && nest build",
     "dev": "nest start --watch",
     "start": "node dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
