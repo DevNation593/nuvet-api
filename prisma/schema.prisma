@@ -111,6 +111,20 @@ enum StockMovementType {
   ADJUSTMENT
 }
 
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  BUY_X_GET_Y  // ej: 2x1, 3x2 (compra X, lleva Y gratis)
+}
+
+enum DiscountTargetType {
+  PRODUCT           // producto específico
+  PRODUCT_CATEGORY  // todos los productos de una categoría
+  SERVICE           // tipo de servicio (AppointmentType)
+  ALL_PRODUCTS      // todos los productos
+  ALL_SERVICES      // todos los servicios
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Tenant {
@@ -144,6 +158,7 @@ model Tenant {
   blocks                 Block[]
   holidays               Holiday[]
   notificationTemplates  NotificationTemplate[]
+  discounts              Discount[]
 
   @@map("tenants")
 }
@@ -533,21 +548,23 @@ model StockMovement {
 }
 
 model Order {
-  id        String      @id @default(uuid())
-  tenantId  String
-  clientId  String
-  subtotal  Float
-  tax       Float       @default(0)
-  total     Float
-  status    OrderStatus @default(PENDING)
-  notes     String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id             String      @id @default(uuid())
+  tenantId       String
+  clientId       String
+  subtotal       Float
+  discount       Float       @default(0)
+  tax            Float       @default(0)
+  total          Float
+  status         OrderStatus @default(PENDING)
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client   User        @relation(fields: [clientId], references: [id])
-  items    OrderItem[]
-  payments Payment[]
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client         User           @relation(fields: [clientId], references: [id])
+  items          OrderItem[]
+  payments       Payment[]
+  discountUsages DiscountUsage[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -661,6 +678,54 @@ model NotificationTemplate {
   @@unique([tenantId, key, channel])
   @@index([tenantId])
   @@map("notification_templates")
+}
+
+model Discount {
+  id          String             @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  type        DiscountType
+  value       Float              @default(0) // porcentaje (0-100) o monto fijo; 0 si type=BUY_X_GET_Y
+  buyQuantity Int?               // unidades a comprar (ej: 2 en un 2x1)
+  getQuantity Int?               // unidades gratis    (ej: 1 en un 2x1)
+  targetType  DiscountTargetType
+  targetId    String?            // productId si targetType = PRODUCT
+  category    String?            // categoría si targetType = PRODUCT_CATEGORY
+  serviceType String?            // AppointmentType si targetType = SERVICE
+  minAmount   Float?             // monto mínimo de compra para aplicar
+  maxUses     Int?               // null = usos ilimitados
+  usedCount   Int                @default(0)
+  startAt     DateTime           // fecha de activación
+  endAt       DateTime?          // null = sin expiración
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItems DiscountUsage[]
+
+  @@index([tenantId])
+  @@index([tenantId, startAt])
+  @@index([tenantId, isActive])
+  @@map("discounts")
+}
+
+model DiscountUsage {
+  id          String   @id @default(uuid())
+  tenantId    String
+  discountId  String
+  orderId     String
+  savedAmount Float
+  createdAt   DateTime @default(now())
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([discountId])
+  @@index([orderId])
+  @@map("discount_usages")
 }
 
 model AuditLog {

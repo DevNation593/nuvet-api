@@ -24,7 +24,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { StorageModule } from './storage/storage.module';
 import { FilesModule } from './files/files.module';
-import { ClienteModule } from './cliente/cliente.module';
+import { DiscountsModule } from './discounts/discounts.module';
 import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
@@ -69,7 +69,7 @@ import { s3Config } from './config/s3.config';
         NotificationsModule,
         ReportsModule,
         FilesModule,
-        ClienteModule,
+        DiscountsModule,
     ],
     providers: [
         { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },

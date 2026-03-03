@@ -26,6 +26,7 @@ export enum PermissionModule {
   NOTIFICATIONS = 'notifications',
   REPORTS = 'reports',
   FILES = 'files',
+  DISCOUNTS = 'discounts',
 }
 
 export enum PermissionAction {
@@ -201,6 +202,20 @@ export enum StockMovementType {
   IN = 'IN',
   OUT = 'OUT',
   ADJUSTMENT = 'ADJUSTMENT',
+}
+
+export enum DiscountType {
+  PERCENTAGE = 'PERCENTAGE',
+  FIXED = 'FIXED',
+  BUY_X_GET_Y = 'BUY_X_GET_Y', // ej: 2x1, 3x2
+}
+
+export enum DiscountTargetType {
+  PRODUCT = 'PRODUCT',
+  PRODUCT_CATEGORY = 'PRODUCT_CATEGORY',
+  SERVICE = 'SERVICE',
+  ALL_PRODUCTS = 'ALL_PRODUCTS',
+  ALL_SERVICES = 'ALL_SERVICES',
 }
 
 export enum NotificationChannel {

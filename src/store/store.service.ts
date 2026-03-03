@@ -3,10 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@nuvet/types';
 import { CreateProductDto, UpdateProductDto, StockAdjustmentDto, CreateOrderDto } from './dto/store.dto';
 import { PaginationQueryDto, buildPaginatedResponse, buildPaginationArgs } from '../common/dto/pagination.dto';
+import { DiscountsService } from '../discounts/discounts.service';
 
 @Injectable()
 export class StoreService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private discountsService: DiscountsService,
+    ) { }
 
     // ── Products ────────────────────────────────────────────────────────────────
 
@@ -120,34 +124,113 @@ export class StoreService {
 
         if (products.length !== dto.items.length) throw new NotFoundException('One or more products not found');
 
-        const items = dto.items.map((item) => {
-            const product = products.find((p) => p.id === item.productId)!;
-            if (product.stock < item.quantity) throw new BadRequestException(`Insufficient stock for: ${product.name}`);
-            return {
-                tenantId,
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: product.price,
-                total: product.price * item.quantity,
-            };
-        });
+        // Calcular precios y descuentos por línea
+        const itemsWithDiscount = await Promise.all(
+            dto.items.map(async (item) => {
+                const product = products.find((p) => p.id === item.productId)!;
+                if (product.stock < item.quantity)
+                    throw new BadRequestException(`Insufficient stock for: ${product.name}`);
 
-        const subtotal = items.reduce((s, i) => s + i.total, 0);
-        const total = subtotal;
+                const { discountId, savedAmount, finalPrice } =
+                    await this.discountsService.computeProductDiscount(
+                        tenantId,
+                        product.id,
+                        product.category,
+                        product.price,
+                        item.quantity,
+                    );
+
+                return {
+                    tenantId,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitPrice: product.price,
+                    total: finalPrice,
+                    _discountId: discountId,
+                    _savedAmount: savedAmount,
+                };
+            }),
+        );
+
+        const subtotal = itemsWithDiscount.reduce(
+            (s, i) => s + i.unitPrice * i.quantity,
+            0,
+        );
+
+        // Descuento adicional a nivel de orden (si el cliente proveyó uno)
+        let orderLevelDiscount = 0;
+        let orderDiscountId: string | null = null;
+
+        if (dto.discountId) {
+            const preview = await this.discountsService.previewDiscount(
+                tenantId,
+                dto.discountId,
+                subtotal,
+            );
+            orderLevelDiscount = preview.savedAmount;
+            orderDiscountId = dto.discountId;
+        }
+
+        const lineDiscount = itemsWithDiscount.reduce((s, i) => s + i._savedAmount, 0);
+        const totalDiscount = lineDiscount + orderLevelDiscount;
+        const total = Math.max(0, subtotal - totalDiscount);
+
+        // Limpiar propiedades internas antes de insertar en DB
+        const items = itemsWithDiscount.map(({ _discountId, _savedAmount, ...rest }) => rest);
 
         return this.prisma.$transaction(async (tx) => {
             const order = await tx.order.create({
                 data: {
-                    tenantId, clientId, subtotal, tax: 0, total, notes: dto.notes,
+                    tenantId,
+                    clientId,
+                    subtotal,
+                    discount: totalDiscount,
+                    tax: 0,
+                    total,
+                    notes: dto.notes,
                     items: { create: items },
                 },
                 include: { items: true },
             });
-            // Deduct stock
-            for (const item of items) {
-                await tx.product.update({ where: { id: item.productId }, data: { stock: { decrement: item.quantity } } });
+
+            // Registrar usos de descuentos por línea
+            const usageRecords = itemsWithDiscount
+                .filter((i) => i._discountId && i._savedAmount > 0)
+                .map((i) => ({
+                    tenantId,
+                    discountId: i._discountId!,
+                    orderId: order.id,
+                    savedAmount: i._savedAmount,
+                }));
+
+            if (orderDiscountId && orderLevelDiscount > 0) {
+                usageRecords.push({
+                    tenantId,
+                    discountId: orderDiscountId,
+                    orderId: order.id,
+                    savedAmount: orderLevelDiscount,
+                });
             }
-            return order;
+
+            if (usageRecords.length > 0) {
+                await tx.discountUsage.createMany({ data: usageRecords });
+                // Incrementar usedCount
+                const discountIds = [...new Set(usageRecords.map((u) => u.discountId))];
+                await tx.discount.updateMany({
+                    where: { id: { in: discountIds } },
+                    data: { usedCount: { increment: 1 } },
+                });
+            }
+
+            // Descontar stock
+            for (const item of items) {
+                await tx.product.update({
+                    where: { id: item.productId },
+                    data: { stock: { decrement: item.quantity } },
+                });
+            }
+
+            return { ...order, totalDiscount, lineDiscount, orderLevelDiscount };
         });
     }
 
