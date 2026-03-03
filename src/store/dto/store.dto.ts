@@ -62,6 +62,11 @@ export class CreateOrderDto {
     @Type(() => CreateOrderItemDto)
     items: CreateOrderItemDto[];
 
+    @ApiPropertyOptional({ description: 'ID de descuento a aplicar sobre el total del pedido' })
+    @IsOptional()
+    @IsString()
+    discountId?: string;
+
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
