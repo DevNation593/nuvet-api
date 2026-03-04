@@ -1,13 +1,15 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import { AuthController } from './infrastructure/http/auth.controller';
+import { AuthService } from './application/auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { AUTH_REPOSITORY } from './domain/auth.repository';
+import { PrismaAuthRepository } from './infrastructure/persistence/prisma-auth.repository';
 
 @Module({
     imports: [
@@ -24,8 +26,8 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
     ],
     controllers: [AuthController],
     providers: [
+        { provide: AUTH_REPOSITORY, useClass: PrismaAuthRepository },
         AuthService,
-        // Apply JWT + Roles guards globally
         { provide: APP_GUARD, useClass: JwtAuthGuard },
         { provide: APP_GUARD, useClass: RolesGuard },
         { provide: APP_GUARD, useClass: PermissionsGuard },
