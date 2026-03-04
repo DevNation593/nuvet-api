@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { FilesController } from './files.controller';
+import { FilesController } from './infrastructure/http/files.controller';
 import { StorageModule } from '../storage/storage.module';
 
 @Module({
