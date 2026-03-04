@@ -160,6 +160,9 @@ model Tenant {
   notificationTemplates  NotificationTemplate[]
   discounts              Discount[]
   branches               Branch[]
+  cashRegisters          CashRegister[]
+  posTickets             PosTicket[]
+  posRefunds             PosRefund[]
 
   @@map("tenants")
 }
@@ -187,6 +190,8 @@ model Branch {
   staffSchedules StaffSchedule[]
   blocks         Block[]
   holidays       Holiday[]
+  cashRegisters  CashRegister[]
+  posTickets     PosTicket[]
 
   @@index([tenantId])
   @@index([tenantId, isActive])
@@ -224,6 +229,11 @@ model User {
   refreshTokens       RefreshToken[]
   staffSchedules      StaffSchedule[]
   blocks              Block[]
+  cashRegistersOpened CashRegister[]  @relation("CashRegisterOpenedBy")
+  cashRegistersClosed CashRegister[]  @relation("CashRegisterClosedBy")
+  posTicketsCreated   PosTicket[]     @relation("PosTicketCreatedBy")
+  posClientTickets    PosTicket[]     @relation("PosTicketClient")
+  posRefunds          PosRefund[]     @relation("PosRefundBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -552,6 +562,7 @@ model Product {
   orderItems     OrderItem[]
   stockMovements StockMovement[]
   batches        ProductBatch[]
+  posItems       PosTicketItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -795,4 +806,130 @@ model AuditLog {
   @@index([tenantId])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// ─── Punto de Venta (POS) ────────────────────────────────────────────────────
+
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+enum PosTicketStatus {
+  OPEN
+  COMPLETED
+  REFUNDED
+  PARTIAL_REFUND
+  CANCELLED
+}
+
+enum PosItemType {
+  PRODUCT
+  SERVICE
+}
+
+model CashRegister {
+  id             String             @id @default(uuid())
+  tenantId       String
+  branchId       String?
+  openedById     String
+  closedById     String?
+  status         CashRegisterStatus @default(OPEN)
+  openingBalance Float              @default(0)
+  closingBalance Float?
+  notes          String?
+  openedAt       DateTime           @default(now())
+  closedAt       DateTime?
+
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  openedBy User    @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
+  closedBy User?   @relation("CashRegisterClosedBy", fields: [closedById], references: [id])
+  tickets  PosTicket[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cash_registers")
+}
+
+model PosTicket {
+  id          String          @id @default(uuid())
+  tenantId    String
+  branchId    String?
+  registerId  String?
+  clientId    String?         // optional: User with role CLIENT
+  subtotal    Float
+  discount    Float           @default(0)
+  tax         Float           @default(0)
+  total       Float
+  notes       String?
+  status      PosTicketStatus @default(OPEN)
+  createdById String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch?       @relation(fields: [branchId], references: [id])
+  register  CashRegister? @relation(fields: [registerId], references: [id])
+  client    User?         @relation("PosTicketClient", fields: [clientId], references: [id])
+  createdBy User          @relation("PosTicketCreatedBy", fields: [createdById], references: [id])
+  items     PosTicketItem[]
+  payments  PosPayment[]
+  refunds   PosRefund[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, clientId])
+  @@index([registerId])
+  @@map("pos_tickets")
+}
+
+model PosTicketItem {
+  id             String      @id @default(uuid())
+  ticketId       String
+  type           PosItemType
+  productId      String?
+  description    String
+  quantity       Float       @default(1)
+  unitPrice      Float
+  discountAmount Float       @default(0)
+  total          Float
+
+  ticket  PosTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  product Product?  @relation(fields: [productId], references: [id])
+
+  @@index([ticketId])
+  @@map("pos_ticket_items")
+}
+
+model PosPayment {
+  id        String        @id @default(uuid())
+  ticketId  String
+  method    PaymentMethod
+  amount    Float
+  reference String?
+  createdAt DateTime      @default(now())
+
+  ticket PosTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("pos_payments")
+}
+
+model PosRefund {
+  id           String   @id @default(uuid())
+  ticketId     String
+  tenantId     String
+  amount       Float
+  reason       String?
+  refundedById String
+  createdAt    DateTime @default(now())
+
+  ticket     PosTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refundedBy User      @relation("PosRefundBy", fields: [refundedById], references: [id])
+
+  @@index([tenantId])
+  @@index([ticketId])
+  @@map("pos_refunds")
 }
