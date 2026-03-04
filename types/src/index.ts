@@ -27,6 +27,7 @@ export enum PermissionModule {
   REPORTS = 'reports',
   FILES = 'files',
   DISCOUNTS = 'discounts',
+  BRANCHES = 'branches',
 }
 
 export enum PermissionAction {
