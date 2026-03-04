@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { InventoryController } from './inventory.controller';
+import { InventoryController } from './infrastructure/http/inventory.controller';
 import { StoreModule } from '../store/store.module';
 
 @Module({
