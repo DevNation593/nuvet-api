@@ -159,13 +159,44 @@ model Tenant {
   holidays               Holiday[]
   notificationTemplates  NotificationTemplate[]
   discounts              Discount[]
+  branches               Branch[]
 
   @@map("tenants")
+}
+
+// ─── Sucursales ───────────────────────────────────────────────────────────────
+
+model Branch {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  logoUrl   String?
+  website   String?
+  isMain    Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users          User[]
+  appointments   Appointment[]
+  clinicHours    ClinicHours[]
+  staffSchedules StaffSchedule[]
+  blocks         Block[]
+  holidays       Holiday[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("branches")
 }
 
 model User {
   id           String   @id @default(uuid())
   tenantId     String
+  branchId     String?
   email        String
   passwordHash String
   firstName    String
@@ -179,6 +210,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch              Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
   pets                Pet[]                @relation("PetOwner")
   vetAppointments     Appointment[]        @relation("AppointmentVet")
   groomerAppointments Appointment[]        @relation("AppointmentGroomer")
@@ -195,6 +227,7 @@ model User {
 
   @@unique([tenantId, email])
   @@index([tenantId])
+  @@index([branchId])
   @@map("users")
 }
 
@@ -247,6 +280,7 @@ model Pet {
 model Appointment {
   id              String            @id @default(uuid())
   tenantId        String
+  branchId        String?
   petId           String
   vetId           String?
   groomerId       String?
@@ -260,6 +294,7 @@ model Appointment {
   updatedAt       DateTime          @updatedAt
 
   tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
   pet           Pet             @relation(fields: [petId], references: [id])
   vet           User?           @relation("AppointmentVet", fields: [vetId], references: [id])
   groomer       User?           @relation("AppointmentGroomer", fields: [groomerId], references: [id])
@@ -270,6 +305,7 @@ model Appointment {
   auditLogs     AppointmentAuditLog[]
 
   @@index([tenantId])
+  @@index([branchId])
   @@index([petId])
   @@index([vetId])
   @@index([scheduledAt])
@@ -279,6 +315,7 @@ model Appointment {
 model ClinicHours {
   id        String   @id @default(uuid())
   tenantId  String
+  branchId  String?
   dayOfWeek Int      // 0=Sun, 6=Sat
   openTime  String   // "09:00"
   closeTime String   // "17:00"
@@ -286,16 +323,19 @@ model ClinicHours {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, dayOfWeek])
+  @@unique([tenantId, branchId, dayOfWeek])
   @@index([tenantId])
+  @@index([branchId])
   @@map("clinic_hours")
 }
 
 model StaffSchedule {
   id          String   @id @default(uuid())
   tenantId    String
+  branchId    String?
   userId      String
   dayOfWeek   Int      // 0-6
   startTime   String   // "09:00"
@@ -305,11 +345,13 @@ model StaffSchedule {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, userId, dayOfWeek])
+  @@unique([tenantId, branchId, userId, dayOfWeek])
   @@index([tenantId])
+  @@index([branchId])
   @@index([userId])
   @@map("staff_schedules")
 }
@@ -317,16 +359,19 @@ model StaffSchedule {
 model Block {
   id        String   @id @default(uuid())
   tenantId  String
+  branchId  String?
   userId    String?  // null = clinic-wide block
   startAt   DateTime
   endAt     DateTime
   reason    String?
   createdAt DateTime @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([branchId])
   @@index([userId])
   @@index([startAt])
   @@map("blocks")
@@ -335,14 +380,17 @@ model Block {
 model Holiday {
   id        String   @id @default(uuid())
   tenantId  String
+  branchId  String?
   date      DateTime @db.Date
   name      String?
   createdAt DateTime @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, date])
+  @@unique([tenantId, branchId, date])
   @@index([tenantId])
+  @@index([branchId])
   @@map("holidays")
 }
 

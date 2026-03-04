@@ -165,7 +165,7 @@ export class AppointmentsService {
             this.prisma.holiday.findFirst({
                 where: { tenantId, date: { gte: new Date(dayStr), lte: new Date(dayStr + 'T23:59:59.999Z') } },
             }),
-            this.prisma.clinicHours.findUnique({ where: { tenantId_dayOfWeek: { tenantId, dayOfWeek } } }),
+            this.prisma.clinicHours.findFirst({ where: { tenantId, branchId: null, dayOfWeek } }),
             this.prisma.staffSchedule.findFirst({ where: { tenantId, userId: staffId, dayOfWeek } }),
             this.prisma.block.findMany({
                 where: {
