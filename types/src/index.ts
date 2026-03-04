@@ -28,6 +28,7 @@ export enum PermissionModule {
   FILES = 'files',
   DISCOUNTS = 'discounts',
   BRANCHES = 'branches',
+  POS = 'pos',
 }
 
 export enum PermissionAction {
@@ -83,6 +84,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.UPDATE}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.DELETE}`,
     `${PermissionModule.USERS}:${PermissionAction.READ}`,
+    ...permissionsForModule(PermissionModule.POS),
   ],
   [UserRole.GROOMER]: [
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.READ}`,
@@ -96,6 +98,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.INVENTORY}:${PermissionAction.READ}`,
     `${PermissionModule.INVENTORY}:${PermissionAction.UPDATE}`,
     `${PermissionModule.REPORTS}:${PermissionAction.READ}`,
+    `${PermissionModule.POS}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
   ],
   [UserRole.ADOPTION_MANAGER]: [
@@ -217,6 +220,38 @@ export enum DiscountTargetType {
   SERVICE = 'SERVICE',
   ALL_PRODUCTS = 'ALL_PRODUCTS',
   ALL_SERVICES = 'ALL_SERVICES',
+}
+
+export enum PaymentMethod {
+  CASH = 'CASH',
+  CARD = 'CARD',
+  TRANSFER = 'TRANSFER',
+  OTHER = 'OTHER',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+}
+
+export enum CashRegisterStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+}
+
+export enum PosTicketStatus {
+  OPEN = 'OPEN',
+  COMPLETED = 'COMPLETED',
+  REFUNDED = 'REFUNDED',
+  PARTIAL_REFUND = 'PARTIAL_REFUND',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PosItemType {
+  PRODUCT = 'PRODUCT',
+  SERVICE = 'SERVICE',
 }
 
 export enum NotificationChannel {

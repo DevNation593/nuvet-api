@@ -26,6 +26,7 @@ import { StorageModule } from './storage/storage.module';
 import { FilesModule } from './files/files.module';
 import { DiscountsModule } from './discounts/discounts.module';
 import { BranchesModule } from './branches/branches.module';
+import { PosModule } from './pos/pos.module';
 import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
@@ -72,6 +73,7 @@ import { s3Config } from './config/s3.config';
         FilesModule,
         DiscountsModule,
         BranchesModule,
+        PosModule,
     ],
     providers: [
         { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
