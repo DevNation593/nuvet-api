@@ -31,17 +31,48 @@ export class AuthService {
     }
 
     async login(dto: LoginDto) {
-        const user = await this.authRepo.findUserByEmailActive(dto.email.toLowerCase());
+        const normalizedEmail = dto.email.trim().toLowerCase();
+        const normalizedTenantSlug = dto.tenantSlug?.trim().toLowerCase() || undefined;
+        const users = await this.authRepo.findUsersByEmailActive(
+            normalizedEmail,
+            normalizedTenantSlug,
+        );
 
-        if (!user) {
+        if (users.length === 0) {
             throw new UnauthorizedException('Invalid credentials');
+        }
+
+        let user = users[0];
+        let isPasswordValid = false;
+
+        if (users.length > 1 && !normalizedTenantSlug) {
+            const matchingUsers: typeof users = [];
+            for (const candidate of users) {
+                const isCandidateMatch = await bcrypt.compare(dto.password, candidate.passwordHash);
+                if (isCandidateMatch) matchingUsers.push(candidate);
+            }
+
+            if (matchingUsers.length === 0) {
+                throw new UnauthorizedException('Invalid credentials');
+            }
+
+            if (matchingUsers.length > 1) {
+                throw new BadRequestException(
+                    'Multiple accounts match these credentials. Include tenantSlug in login payload.',
+                );
+            }
+
+            user = matchingUsers[0];
+            isPasswordValid = true;
         }
 
         if (!user.tenant.isActive) {
             throw new UnauthorizedException('Tenant account is suspended');
         }
 
-        const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+        if (!isPasswordValid) {
+            isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+        }
         if (!isPasswordValid) {
             throw new UnauthorizedException('Invalid credentials');
         }

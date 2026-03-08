@@ -54,6 +54,15 @@ export class LoginDto {
     @IsEmail()
     email: string;
 
+    @ApiPropertyOptional({ example: 'demo-pro' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(100)
+    @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+        message: 'tenantSlug must be lowercase slug format (e.g. demo-pro)',
+    })
+    tenantSlug?: string;
+
     @ApiProperty({ example: 'SecurePass123!' })
     @IsString()
     @IsNotEmpty()

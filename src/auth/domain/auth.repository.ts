@@ -39,7 +39,7 @@ export interface UpdateUserProfileData {
 }
 
 export interface IAuthRepository {
-    findUserByEmailActive(email: string): Promise<UserWithTenant | null>;
+    findUsersByEmailActive(email: string, tenantSlug?: string): Promise<UserWithTenant[]>;
 
     findUserById(userId: string): Promise<UserWithTenant | null>;
 
