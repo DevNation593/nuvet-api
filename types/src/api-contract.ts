@@ -42,6 +42,7 @@ export interface ApiEnvelope<T> {
 
 export interface LoginRequest {
     email: string;
+    tenantSlug?: string;
     password: string;
 }
 

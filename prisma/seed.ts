@@ -121,6 +121,42 @@ const modulesByPlan: Record<TenantPlan, PermissionModule[]> = {
     [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };
 
+async function resetDatabase() {
+    await prisma.posRefund.deleteMany();
+    await prisma.posPayment.deleteMany();
+    await prisma.posTicketItem.deleteMany();
+    await prisma.posTicket.deleteMany();
+    await prisma.cashRegister.deleteMany();
+    await prisma.discountUsage.deleteMany();
+    await prisma.discount.deleteMany();
+    await prisma.refreshToken.deleteMany();
+    await prisma.appointmentAuditLog.deleteMany();
+    await prisma.medicalRecordAttachment.deleteMany();
+    await prisma.payment.deleteMany();
+    await prisma.orderItem.deleteMany();
+    await prisma.stockMovement.deleteMany();
+    await prisma.productBatch.deleteMany();
+    await prisma.notification.deleteMany();
+    await prisma.auditLog.deleteMany();
+    await prisma.notificationTemplate.deleteMany();
+    await prisma.medicalRecord.deleteMany();
+    await prisma.vaccination.deleteMany();
+    await prisma.aestheticService.deleteMany();
+    await prisma.surgery.deleteMany();
+    await prisma.adoption.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.appointment.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.block.deleteMany();
+    await prisma.staffSchedule.deleteMany();
+    await prisma.holiday.deleteMany();
+    await prisma.clinicHours.deleteMany();
+    await prisma.pet.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.branch.deleteMany();
+    await prisma.tenant.deleteMany();
+}
+
 async function upsertTenant(input: SeedTenant) {
     return prisma.tenant.upsert({
         where: { slug: input.slug },
@@ -174,6 +210,9 @@ async function upsertUser(tenantId: string, input: SeedUser) {
 }
 
 async function main() {
+    console.log('Iniciando seed base (reset total)...');
+    await resetDatabase();
+
     const seededTenants: Array<{ id: string; slug: string; plan: TenantPlan }> = [];
     const seededUsers: Array<{ tenantSlug: string; email: string; role: UserRole; password: string }> = [];
 

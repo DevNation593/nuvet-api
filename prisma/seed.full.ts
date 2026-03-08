@@ -2,12 +2,17 @@ import {
     AdoptionStatus,
     AppointmentStatus,
     AppointmentType,
+    CashRegisterStatus,
+    DiscountTargetType,
+    DiscountType,
     NotificationChannel,
     OrderStatus,
     PaymentMethod,
     PaymentStatus,
     PetSex,
     PetSpecies,
+    PosItemType,
+    PosTicketStatus,
     PrismaClient,
     TenantPlan,
     UserRole,
@@ -44,15 +49,15 @@ const ownerUserByPlan: Record<TenantPlan, SeedUser> = {
 const modulesByPlan: Record<TenantPlan, PermissionModule[]> = {
     [TenantPlan.FREE]: [PermissionModule.APPOINTMENTS, PermissionModule.PETS, PermissionModule.CLIENTS, PermissionModule.NOTIFICATIONS],
     [TenantPlan.STARTER]: [PermissionModule.APPOINTMENTS, PermissionModule.PETS, PermissionModule.CLIENTS, PermissionModule.MEDICAL_RECORDS, PermissionModule.VACCINATIONS, PermissionModule.NOTIFICATIONS, PermissionModule.REPORTS],
-    [TenantPlan.PRO]: [PermissionModule.APPOINTMENTS, PermissionModule.PETS, PermissionModule.CLIENTS, PermissionModule.MEDICAL_RECORDS, PermissionModule.VACCINATIONS, PermissionModule.AESTHETICS, PermissionModule.SURGERIES, PermissionModule.STORE, PermissionModule.INVENTORY, PermissionModule.NOTIFICATIONS, PermissionModule.REPORTS, PermissionModule.FILES],
+    [TenantPlan.PRO]: [PermissionModule.APPOINTMENTS, PermissionModule.PETS, PermissionModule.CLIENTS, PermissionModule.MEDICAL_RECORDS, PermissionModule.VACCINATIONS, PermissionModule.AESTHETICS, PermissionModule.SURGERIES, PermissionModule.STORE, PermissionModule.INVENTORY, PermissionModule.NOTIFICATIONS, PermissionModule.REPORTS, PermissionModule.FILES, PermissionModule.DISCOUNTS, PermissionModule.BRANCHES, PermissionModule.POS],
     [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };
 
 const featuresByPlan = {
-    [TenantPlan.FREE]: { medical: false, vaccines: false, aesthetics: false, surgery: false, store: false, adoptions: false },
-    [TenantPlan.STARTER]: { medical: true, vaccines: true, aesthetics: false, surgery: false, store: false, adoptions: false },
-    [TenantPlan.PRO]: { medical: true, vaccines: true, aesthetics: true, surgery: true, store: true, adoptions: false },
-    [TenantPlan.ENTERPRISE]: { medical: true, vaccines: true, aesthetics: true, surgery: true, store: true, adoptions: true },
+    [TenantPlan.FREE]: { medical: false, vaccines: false, aesthetics: false, surgery: false, store: false, adoptions: false, discounts: false, branches: false, pos: false },
+    [TenantPlan.STARTER]: { medical: true, vaccines: true, aesthetics: false, surgery: false, store: false, adoptions: false, discounts: false, branches: false, pos: false },
+    [TenantPlan.PRO]: { medical: true, vaccines: true, aesthetics: true, surgery: true, store: true, adoptions: false, discounts: true, branches: true, pos: true },
+    [TenantPlan.ENTERPRISE]: { medical: true, vaccines: true, aesthetics: true, surgery: true, store: true, adoptions: true, discounts: true, branches: true, pos: true },
 } as const;
 
 const days = (n: number) => {
@@ -63,6 +68,13 @@ const days = (n: number) => {
 const at = (base: Date, h: number, m = 0) => new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m, 0, 0);
 
 async function resetDatabase() {
+    await prisma.posRefund.deleteMany();
+    await prisma.posPayment.deleteMany();
+    await prisma.posTicketItem.deleteMany();
+    await prisma.posTicket.deleteMany();
+    await prisma.cashRegister.deleteMany();
+    await prisma.discountUsage.deleteMany();
+    await prisma.discount.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.appointmentAuditLog.deleteMany();
     await prisma.medicalRecordAttachment.deleteMany();
@@ -87,6 +99,7 @@ async function resetDatabase() {
     await prisma.clinicHours.deleteMany();
     await prisma.pet.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.branch.deleteMany();
     await prisma.tenant.deleteMany();
 }
 
@@ -248,6 +261,106 @@ async function seedAdoptions(tenantId: string, users: UsersMap, refs: Awaited<Re
     return 2;
 }
 
+async function seedBranches(tenantId: string, plan: TenantPlan): Promise<{ main: string; secondary?: string }> {
+    const main = await prisma.branch.create({
+        data: { tenantId, name: 'Sede Principal', address: 'Calle Principal 100', phone: '+15550009001', email: `principal@${plan.toLowerCase()}.nuvet.local`, isMain: true },
+        select: { id: true },
+    });
+    if (plan === TenantPlan.ENTERPRISE) {
+        const secondary = await prisma.branch.create({
+            data: { tenantId, name: 'Sucursal Norte', address: 'Av. Norte 200', phone: '+15550009002', email: `norte@${plan.toLowerCase()}.nuvet.local`, isMain: false },
+            select: { id: true },
+        });
+        return { main: main.id, secondary: secondary.id };
+    }
+    return { main: main.id };
+}
+
+async function seedDiscounts(tenantId: string, plan: TenantPlan, productIds: string[]) {
+    const now = new Date();
+    const discounts = [
+        {
+            tenantId, name: '10% en consultas', description: 'Descuento del 10% en consultas veterinarias',
+            type: DiscountType.PERCENTAGE, value: 10, targetType: DiscountTargetType.SERVICE,
+            serviceType: 'CONSULTATION', startAt: now, endAt: days(90), isActive: true,
+        },
+        {
+            tenantId, name: '$5 descuento en alimentos', description: 'Descuento fijo de $5 en categoría Alimentos',
+            type: DiscountType.FIXED, value: 5, targetType: DiscountTargetType.PRODUCT_CATEGORY,
+            category: 'Alimentos', minAmount: 20, startAt: now, endAt: days(60), isActive: true,
+        },
+    ];
+    if (plan === TenantPlan.ENTERPRISE && productIds.length > 0) {
+        discounts.push({
+            tenantId, name: '2x1 en Shampoo', description: 'Compra 2, lleva 1 gratis',
+            type: DiscountType.BUY_X_GET_Y, value: 0, targetType: DiscountTargetType.PRODUCT,
+            startAt: now, endAt: days(45), isActive: true,
+            buyQuantity: 2, getQuantity: 1, targetId: productIds[1],
+        } as any);
+        discounts.push({
+            tenantId, name: '15% en todos los servicios', description: 'Descuento del 15% en todos los servicios',
+            type: DiscountType.PERCENTAGE, value: 15, targetType: DiscountTargetType.ALL_SERVICES,
+            startAt: now, endAt: days(30), isActive: true, maxUses: 50,
+        } as any);
+    }
+    for (const d of discounts) await prisma.discount.create({ data: d });
+    return discounts.length;
+}
+
+async function seedPOS(tenantId: string, users: UsersMap, branchIds: { main: string; secondary?: string }, productIds: string[]) {
+    const cashier = users.receptionist ?? users.owner;
+    const register = await prisma.cashRegister.create({
+        data: { tenantId, branchId: branchIds.main, openedById: cashier!.id, status: CashRegisterStatus.OPEN, openingBalance: 100 },
+        select: { id: true },
+    });
+
+    // Ticket completado
+    const ticket1 = await prisma.posTicket.create({
+        data: {
+            tenantId, branchId: branchIds.main, registerId: register.id, clientId: users.client1?.id,
+            subtotal: 44.4, tax: 5.33, total: 49.73, status: PosTicketStatus.COMPLETED, createdById: cashier!.id,
+        },
+        select: { id: true },
+    });
+    if (productIds.length >= 2) {
+        await prisma.posTicketItem.createMany({
+            data: [
+                { ticketId: ticket1.id, type: PosItemType.PRODUCT, productId: productIds[0], description: 'Alimento Premium 5kg', quantity: 1, unitPrice: 29.9, total: 29.9 },
+                { ticketId: ticket1.id, type: PosItemType.PRODUCT, productId: productIds[1], description: 'Shampoo Hipoalergénico', quantity: 1, unitPrice: 14.5, total: 14.5 },
+            ],
+        });
+    }
+    await prisma.posPayment.create({ data: { ticketId: ticket1.id, method: PaymentMethod.CARD, amount: 49.73 } });
+
+    // Ticket abierto
+    const ticket2 = await prisma.posTicket.create({
+        data: {
+            tenantId, branchId: branchIds.main, registerId: register.id,
+            subtotal: 25, tax: 3, total: 28, status: PosTicketStatus.OPEN, createdById: cashier!.id,
+        },
+        select: { id: true },
+    });
+    await prisma.posTicketItem.create({
+        data: { ticketId: ticket2.id, type: PosItemType.SERVICE, description: 'Baño básico', quantity: 1, unitPrice: 25, total: 25 },
+    });
+
+    // Ticket con reembolso (solo Enterprise)
+    if (branchIds.secondary && users.client2) {
+        const ticket3 = await prisma.posTicket.create({
+            data: {
+                tenantId, branchId: branchIds.secondary, registerId: register.id, clientId: users.client2.id,
+                subtotal: 29.9, tax: 3.59, total: 33.49, status: PosTicketStatus.REFUNDED, createdById: cashier!.id,
+            },
+            select: { id: true },
+        });
+        if (productIds.length > 0) {
+            await prisma.posTicketItem.create({ data: { ticketId: ticket3.id, type: PosItemType.PRODUCT, productId: productIds[0], description: 'Alimento Premium 5kg', quantity: 1, unitPrice: 29.9, total: 29.9 } });
+        }
+        await prisma.posPayment.create({ data: { ticketId: ticket3.id, method: PaymentMethod.CASH, amount: 33.49 } });
+        await prisma.posRefund.create({ data: { ticketId: ticket3.id, tenantId, amount: 33.49, reason: 'Producto en mal estado', refundedById: cashier!.id } });
+    }
+}
+
 async function seedNotificationsAndLogs(tenantId: string, users: UsersMap, plan: TenantPlan) {
     await prisma.notificationTemplate.create({ data: { tenantId, key: 'appointment_reminder', channel: NotificationChannel.EMAIL, subject: 'Recordatorio de cita', bodyTemplate: `Template ${plan} {{clientName}} {{date}}`, isSystem: false } });
     await prisma.notification.createMany({ data: [{ tenantId, userId: users.owner!.id, title: 'Seed completada', body: `Plan ${plan}`, channel: NotificationChannel.IN_APP, data: { plan } }, { tenantId, userId: users.client1!.id, title: 'Bienvenido', body: 'Datos demo cargados', channel: NotificationChannel.EMAIL, data: { role: 'CLIENT' } }] });
@@ -265,16 +378,39 @@ async function createTenantDataset(tenant: SeedTenant, idx: number) {
         creds.push({ email: userSeeds[key].email, role: userSeeds[key].role, password: userSeeds[key].password });
     }
 
+    // Crear sucursales antes de seedCommonTenantData para poder asignar branchId
+    const features = featuresByPlan[tenant.plan];
+    let branchIds: { main: string; secondary?: string } | null = null;
+    if (features.branches) {
+        branchIds = await seedBranches(t.id, tenant.plan);
+        // Asignar usuarios a la sucursal principal
+        for (const key of Object.keys(users)) {
+            await prisma.user.update({ where: { id: (users as Record<string, BasicUser>)[key].id }, data: { branchId: branchIds.main } });
+        }
+        // En Enterprise, mover client2 y adoptionManager a sucursal secundaria
+        if (branchIds.secondary) {
+            if (users.client2) await prisma.user.update({ where: { id: users.client2.id }, data: { branchId: branchIds.secondary } });
+            if (users.adoptionManager) await prisma.user.update({ where: { id: users.adoptionManager.id }, data: { branchId: branchIds.secondary } });
+        }
+    }
+
     await seedCommonTenantData(t.id, users);
     const refs = await seedPetsAndAppointments(t.id, users, tenant.plan);
-    const features = featuresByPlan[tenant.plan];
     if (features.medical || features.vaccines) await seedMedicalAndVaccines(t.id, users, refs);
     if (features.aesthetics || features.surgery) await seedAestheticsAndSurgery(t.id, users, refs);
     const products = features.store ? await seedStore(t.id, users) : 0;
     const adoptions = features.adoptions ? await seedAdoptions(t.id, users, refs) : 0;
+
+    // Recopilar IDs de productos para descuentos y POS
+    const productRecords = await prisma.product.findMany({ where: { tenantId: t.id }, select: { id: true }, orderBy: { createdAt: 'asc' } });
+    const productIds = productRecords.map((p) => p.id);
+
+    const discountsCount = features.discounts ? await seedDiscounts(t.id, tenant.plan, productIds) : 0;
+    if (features.pos && branchIds) await seedPOS(t.id, users, branchIds, productIds);
+
     await seedNotificationsAndLogs(t.id, users, tenant.plan);
 
-    return { tenant: t, users: creds, counts: { users: creds.length, pets: tenant.plan === TenantPlan.ENTERPRISE ? 4 : 2, appointments: refs.appointmentsCount, products, adoptions } };
+    return { tenant: t, users: creds, counts: { users: creds.length, pets: tenant.plan === TenantPlan.ENTERPRISE ? 4 : 2, appointments: refs.appointmentsCount, products, adoptions, discounts: discountsCount, branches: branchIds ? (branchIds.secondary ? 2 : 1) : 0 } };
 }
 
 async function main() {
