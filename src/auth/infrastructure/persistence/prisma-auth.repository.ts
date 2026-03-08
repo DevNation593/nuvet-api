@@ -11,11 +11,15 @@ import {
 export class PrismaAuthRepository implements IAuthRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    async findUserByEmailActive(email: string): Promise<UserWithTenant | null> {
-        return this.prisma.user.findFirst({
-            where: { email, isActive: true },
+    async findUsersByEmailActive(email: string, tenantSlug?: string): Promise<UserWithTenant[]> {
+        return this.prisma.user.findMany({
+            where: {
+                email: { equals: email, mode: 'insensitive' },
+                isActive: true,
+                ...(tenantSlug ? { tenant: { slug: tenantSlug } } : {}),
+            },
             include: { tenant: true },
-        }) as Promise<UserWithTenant | null>;
+        }) as Promise<UserWithTenant[]>;
     }
 
     async findUserById(userId: string): Promise<UserWithTenant | null> {
