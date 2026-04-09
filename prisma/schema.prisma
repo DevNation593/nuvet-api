@@ -862,6 +862,12 @@ model PosTicket {
   discount    Float           @default(0)
   tax         Float           @default(0)
   total       Float
+  providerInvoiceId String?
+  invoiceStatus     String?
+  invoiceNumber     String?
+  invoiceAccessKey  String?
+  invoiceIssuedAt   DateTime?
+  invoiceAuthorizedAt DateTime?
   notes       String?
   status      PosTicketStatus @default(OPEN)
   createdById String
@@ -880,6 +886,7 @@ model PosTicket {
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, clientId])
+  @@index([tenantId, providerInvoiceId])
   @@index([registerId])
   @@map("pos_tickets")
 }

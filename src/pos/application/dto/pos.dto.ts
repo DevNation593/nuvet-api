@@ -162,3 +162,54 @@ export class CreateRefundDto {
     @IsString()
     reason?: string;
 }
+
+// ── Legacy Compatibility (web POS) ──────────────────────────────────────────
+
+export class LegacyTransactionItemInputDto {
+    @ApiProperty()
+    @IsUUID()
+    productId: string;
+
+    @ApiProperty()
+    @IsNumber()
+    @Min(0.001)
+    quantity: number;
+
+    @ApiProperty()
+    @IsNumber()
+    @Min(0)
+    unitPrice: number;
+}
+
+export class CreateLegacyTransactionDto {
+    @ApiProperty({ type: [LegacyTransactionItemInputDto] })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => LegacyTransactionItemInputDto)
+    items: LegacyTransactionItemInputDto[];
+
+    @ApiProperty({ enum: PaymentMethod })
+    @IsEnum(PaymentMethod)
+    paymentMethod: PaymentMethod;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    promotionCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    cashReceived?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    notes?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsUUID()
+    clientId?: string;
+}

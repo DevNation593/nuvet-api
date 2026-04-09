@@ -34,4 +34,14 @@ export class BillingController {
     ) {
         return this.billingService.getExternalInvoiceStatus(user.tenantId, providerInvoiceId);
     }
+
+    @Get('pos-tickets/:ticketId/status')
+    @Permissions(`${PermissionModule.BILLING}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Consultar estado de factura electrónica por ticket POS' })
+    getPosTicketInvoiceStatus(
+        @CurrentUser() user: JwtPayload,
+        @Param('ticketId') ticketId: string,
+    ) {
+        return this.billingService.getTicketInvoiceStatus(user.tenantId, ticketId);
+    }
 }

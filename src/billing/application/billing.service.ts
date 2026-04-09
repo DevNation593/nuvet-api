@@ -1,6 +1,5 @@
 import {
     BadRequestException,
-    ForbiddenException,
     Inject,
     Injectable,
     NotFoundException,
@@ -8,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PosTicketStatus } from '@nuvet/types';
 import { PosService } from '../../pos/application/pos.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
     ELECTRONIC_INVOICE_PROVIDER,
     IElectronicInvoiceProvider,
@@ -27,6 +27,7 @@ export class BillingService {
     constructor(
         private readonly configService: ConfigService,
         private readonly posService: PosService,
+        private readonly prisma: PrismaService,
         @Inject(ELECTRONIC_INVOICE_PROVIDER)
         private readonly eInvoiceProvider: IElectronicInvoiceProvider,
     ) {
@@ -60,6 +61,18 @@ export class BillingService {
         const payload = this.buildInvoicePayload(ticket, dto);
         const result = await this.eInvoiceProvider.issueInvoice(payload);
 
+        await this.prisma.posTicket.updateMany({
+            where: { id: ticketId, tenantId },
+            data: {
+                providerInvoiceId: result.providerInvoiceId,
+                invoiceStatus: result.providerStatus,
+                invoiceNumber: result.documentNumber,
+                invoiceAccessKey: result.accessKey,
+                invoiceAuthorizedAt: result.authorizedAt ? new Date(result.authorizedAt) : null,
+                invoiceIssuedAt: new Date(),
+            },
+        });
+
         return {
             ticketId,
             invoice: result,
@@ -71,19 +84,66 @@ export class BillingService {
             throw new NotFoundException('Debe enviar el identificador de factura externa');
         }
 
-        const status = await this.eInvoiceProvider.getInvoiceStatus(providerInvoiceId);
-        const inferredTicketId =
-            (status.raw as { internalReference?: string } | undefined)?.internalReference ??
-            undefined;
+        const ticket = await this.prisma.posTicket.findFirst({
+            where: { tenantId, providerInvoiceId },
+            select: { id: true },
+        });
 
-        if (!inferredTicketId) {
-            throw new ForbiddenException(
-                'No se pudo validar pertenencia del documento al tenant actual',
-            );
+        if (!ticket) {
+            throw new NotFoundException('No existe factura asociada a un ticket del tenant actual');
         }
 
-        await this.posService.findTicket(tenantId, inferredTicketId);
+        const status = await this.eInvoiceProvider.getInvoiceStatus(providerInvoiceId);
+
+        await this.prisma.posTicket.updateMany({
+            where: { id: ticket.id, tenantId },
+            data: {
+                invoiceStatus: status.providerStatus,
+                invoiceNumber: status.documentNumber,
+                invoiceAccessKey: status.accessKey,
+                invoiceAuthorizedAt: status.authorizedAt ? new Date(status.authorizedAt) : null,
+            },
+        });
+
         return status;
+    }
+
+    async getTicketInvoiceStatus(tenantId: string, ticketId: string) {
+        const ticket = await this.prisma.posTicket.findFirst({
+            where: { id: ticketId, tenantId },
+            select: {
+                id: true,
+                providerInvoiceId: true,
+                invoiceStatus: true,
+                invoiceNumber: true,
+                invoiceAccessKey: true,
+                invoiceAuthorizedAt: true,
+                invoiceIssuedAt: true,
+            },
+        });
+
+        if (!ticket) {
+            throw new NotFoundException('Ticket POS no encontrado');
+        }
+
+        if (!ticket.providerInvoiceId) {
+            throw new NotFoundException('El ticket POS no tiene factura electrónica asociada');
+        }
+
+        const external = await this.getExternalInvoiceStatus(tenantId, ticket.providerInvoiceId);
+
+        return {
+            ticketId: ticket.id,
+            providerInvoiceId: ticket.providerInvoiceId,
+            persisted: {
+                status: ticket.invoiceStatus,
+                documentNumber: ticket.invoiceNumber,
+                accessKey: ticket.invoiceAccessKey,
+                issuedAt: ticket.invoiceIssuedAt,
+                authorizedAt: ticket.invoiceAuthorizedAt,
+            },
+            external,
+        };
     }
 
     private buildInvoicePayload(

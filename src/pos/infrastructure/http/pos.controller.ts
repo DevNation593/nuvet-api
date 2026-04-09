@@ -25,6 +25,7 @@ import {
     AddTicketItemDto,
     ProcessPaymentsDto,
     CreateRefundDto,
+    CreateLegacyTransactionDto,
 } from '../../application/dto/pos.dto';
 
 @ApiTags('pos')
@@ -162,5 +163,48 @@ export class PosController {
         @Body() dto: CreateRefundDto,
     ) {
         return this.posService.createRefund(user.tenantId, ticketId, user.sub, dto);
+    }
+
+    // ── Legacy compatibility (web POS) ──────────────────────────────────────
+
+    @Get('transactions')
+    @Permissions(`${PermissionModule.POS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'List POS transactions (legacy compatibility)' })
+    findLegacyTransactions(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: PaginationQueryDto,
+        @Query() filter: TicketFilterDto,
+    ) {
+        return this.posService.findLegacyTransactions(user.tenantId, query, filter);
+    }
+
+    @Get('summary/daily')
+    @Permissions(`${PermissionModule.POS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Get daily POS summary (legacy compatibility)' })
+    getLegacyDailySummary(@CurrentUser() user: JwtPayload, @Query('date') date?: string) {
+        return this.posService.getLegacyDailySummary(user.tenantId, date);
+    }
+
+    @Post('transactions')
+    @Permissions(`${PermissionModule.POS}:${PermissionAction.CREATE}`)
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create POS transaction (legacy compatibility)' })
+    createLegacyTransaction(
+        @CurrentUser() user: JwtPayload,
+        @Body() dto: CreateLegacyTransactionDto,
+    ) {
+        return this.posService.createLegacyTransaction(user.tenantId, user.sub, dto);
+    }
+
+    @Patch('transactions/:id/void')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.RECEPTIONIST)
+    @Permissions(`${PermissionModule.POS}:${PermissionAction.UPDATE}`)
+    @ApiOperation({ summary: 'Void POS transaction (legacy compatibility)' })
+    voidLegacyTransaction(
+        @CurrentUser() user: JwtPayload,
+        @Param('id') ticketId: string,
+        @Body('reason') reason?: string,
+    ) {
+        return this.posService.voidLegacyTransaction(user.tenantId, user.sub, ticketId, reason);
     }
 }

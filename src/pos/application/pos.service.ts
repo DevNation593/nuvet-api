@@ -5,7 +5,7 @@ import {
     BadRequestException,
     ConflictException,
 } from '@nestjs/common';
-import { PosTicketStatus, CashRegisterStatus, PosItemType } from '@nuvet/types';
+import { PosTicketStatus, CashRegisterStatus, PosItemType, PaymentMethod } from '@nuvet/types';
 import { IPosRepository, POS_REPOSITORY } from '../domain/pos.repository';
 import {
     OpenRegisterDto,
@@ -15,6 +15,7 @@ import {
     AddTicketItemDto,
     ProcessPaymentsDto,
     CreateRefundDto,
+    CreateLegacyTransactionDto,
 } from './dto/pos.dto';
 import {
     PaginationQueryDto,
@@ -226,7 +227,197 @@ export class PosService {
         return refund;
     }
 
+    // ── Legacy compatibility (web POS) ──────────────────────────────────────
+
+    async createLegacyTransaction(
+        tenantId: string,
+        userId: string,
+        dto: CreateLegacyTransactionDto,
+    ) {
+        if (!dto.items?.length) {
+            throw new BadRequestException('La transacción debe incluir al menos un item');
+        }
+
+        const openRegister = (await this.posRepo.findOpenRegister(tenantId)) as
+            | { id: string }
+            | null;
+
+        const ticket = (await this.createTicket(tenantId, userId, {
+            registerId: openRegister?.id,
+            clientId: dto.clientId,
+            notes: dto.notes,
+        })) as { id: string };
+
+        for (const item of dto.items) {
+            await this.addItem(tenantId, ticket.id, {
+                type: PosItemType.PRODUCT,
+                productId: item.productId,
+                description: 'PRODUCT',
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                discountAmount: 0,
+            });
+        }
+
+        const freshTicket = (await this.findTicket(tenantId, ticket.id)) as { total: number };
+        const paymentAmount =
+            dto.paymentMethod === PaymentMethod.CASH && typeof dto.cashReceived === 'number'
+                ? dto.cashReceived
+                : freshTicket.total;
+
+        await this.processPayments(tenantId, ticket.id, {
+            payments: [
+                {
+                    method: dto.paymentMethod,
+                    amount: paymentAmount,
+                },
+            ],
+        });
+
+        const completedTicket = await this.findTicket(tenantId, ticket.id);
+        return this.mapTicketToLegacyTransaction(completedTicket as any);
+    }
+
+    async findLegacyTransactions(tenantId: string, query: PaginationQueryDto, filter: TicketFilterDto) {
+        const normalizedFilter: TicketFilterDto = {
+            ...filter,
+            dateFrom: filter.dateFrom,
+            dateTo: filter.dateTo,
+        };
+
+        const response = await this.findAllTickets(tenantId, query, normalizedFilter);
+        const data = ((response as { data?: unknown[] }).data ?? []).map((ticket) =>
+            this.mapTicketToLegacyTransaction(ticket as any),
+        );
+
+        return {
+            ...(response as object),
+            data,
+        };
+    }
+
+    async getLegacyDailySummary(tenantId: string, date?: string) {
+        const base = date ? new Date(`${date}T00:00:00.000Z`) : new Date();
+        if (Number.isNaN(base.getTime())) {
+            throw new BadRequestException('Formato de fecha inválido. Usa YYYY-MM-DD');
+        }
+
+        const start = new Date(base);
+        start.setUTCHours(0, 0, 0, 0);
+        const end = new Date(base);
+        end.setUTCHours(23, 59, 59, 999);
+
+        const tickets = await this.posRepo.findAllTickets(
+            tenantId,
+            {
+                status: PosTicketStatus.COMPLETED,
+                dateFrom: start.toISOString(),
+                dateTo: end.toISOString(),
+            },
+            0,
+            1000,
+        );
+
+        const byPaymentMethod: Record<PaymentMethod, { count: number; total: number }> = {
+            CASH: { count: 0, total: 0 },
+            CARD: { count: 0, total: 0 },
+            TRANSFER: { count: 0, total: 0 },
+            OTHER: { count: 0, total: 0 },
+        };
+
+        for (const ticket of tickets.data as any[]) {
+            for (const payment of ticket.payments ?? []) {
+                const method = (payment.method as PaymentMethod) ?? PaymentMethod.OTHER;
+                if (!byPaymentMethod[method]) continue;
+                byPaymentMethod[method].count += 1;
+                byPaymentMethod[method].total += Number(payment.amount ?? 0);
+            }
+        }
+
+        return {
+            date: start.toISOString().slice(0, 10),
+            totalTransactions: tickets.total,
+            totalRevenue: (tickets.data as any[]).reduce((acc, t) => acc + Number(t.total ?? 0), 0),
+            totalDiscount: (tickets.data as any[]).reduce((acc, t) => acc + Number(t.discount ?? 0), 0),
+            byPaymentMethod,
+        };
+    }
+
+    async voidLegacyTransaction(tenantId: string, userId: string, ticketId: string, reason?: string) {
+        const ticket = (await this.findTicket(tenantId, ticketId)) as {
+            status: PosTicketStatus;
+            total: number;
+            refunds?: Array<{ amount: number }>;
+        };
+
+        if (ticket.status === PosTicketStatus.CANCELLED || ticket.status === PosTicketStatus.REFUNDED) {
+            throw new BadRequestException('La transacción ya se encuentra anulada/reembolsada');
+        }
+
+        if (ticket.status === PosTicketStatus.OPEN) {
+            await this.cancelTicket(tenantId, ticketId);
+            const cancelled = await this.findTicket(tenantId, ticketId);
+            return this.mapTicketToLegacyTransaction(cancelled as any);
+        }
+
+        const refundedSoFar = (ticket.refunds ?? []).reduce((sum, r) => sum + Number(r.amount ?? 0), 0);
+        const pendingRefund = Math.max(0, Number(ticket.total ?? 0) - refundedSoFar);
+
+        if (pendingRefund <= 0) {
+            throw new BadRequestException('La transacción ya está completamente reembolsada');
+        }
+
+        await this.createRefund(tenantId, ticketId, userId, {
+            amount: pendingRefund,
+            reason: reason ?? 'Anulado por operador',
+        });
+
+        const updated = await this.findTicket(tenantId, ticketId);
+        return this.mapTicketToLegacyTransaction(updated as any);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private mapTicketToLegacyTransaction(ticket: any) {
+        const primaryPayment = Array.isArray(ticket.payments) && ticket.payments.length > 0
+            ? ticket.payments[0]
+            : undefined;
+
+        return {
+            id: ticket.id,
+            status: ticket.status,
+            items: (ticket.items ?? []).map((item: any) => ({
+                productId: item.productId,
+                quantity: Number(item.quantity ?? 0),
+                unitPrice: Number(item.unitPrice ?? 0),
+                discount: Number(item.discountAmount ?? 0),
+                total: Number(item.total ?? 0),
+            })),
+            subtotal: Number(ticket.subtotal ?? 0),
+            discountTotal: Number(ticket.discount ?? 0),
+            tax: Number(ticket.tax ?? 0),
+            total: Number(ticket.total ?? 0),
+            paymentMethod: (primaryPayment?.method ?? PaymentMethod.OTHER) as PaymentMethod,
+            notes: ticket.notes,
+            clientId: ticket.clientId,
+            client: ticket.client
+                ? {
+                    firstName: ticket.client.firstName,
+                    lastName: ticket.client.lastName,
+                    identification: ticket.client.identification,
+                    email: ticket.client.email,
+                }
+                : undefined,
+            providerInvoiceId: ticket.providerInvoiceId ?? undefined,
+            invoice: ticket.providerInvoiceId
+                ? {
+                    providerInvoiceId: ticket.providerInvoiceId,
+                }
+                : undefined,
+            createdAt: ticket.createdAt,
+            receiptNumber: `R-${String(ticket.id).slice(0, 8).toUpperCase()}`,
+        };
+    }
 
     private async recalculateTotals(ticketId: string) {
         const items = (await this.posRepo.findTicketItems(ticketId)) as any[];
