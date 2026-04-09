@@ -313,6 +313,7 @@ export const PLAN_MODULES: Record<TenantPlan, PermissionModule[]> = {
     PermissionModule.STORE,
     PermissionModule.INVENTORY,
     PermissionModule.ADOPTIONS,
+    PermissionModule.POS,
     PermissionModule.USERS,
     PermissionModule.TENANT_SETTINGS,
     PermissionModule.NOTIFICATIONS,

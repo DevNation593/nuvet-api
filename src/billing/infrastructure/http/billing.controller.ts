@@ -28,7 +28,10 @@ export class BillingController {
     @Get('external/:providerInvoiceId/status')
     @Permissions(`${PermissionModule.BILLING}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'Consultar estado en el proveedor externo de facturación' })
-    getExternalInvoiceStatus(@Param('providerInvoiceId') providerInvoiceId: string) {
-        return this.billingService.getExternalInvoiceStatus(providerInvoiceId);
+    getExternalInvoiceStatus(
+        @CurrentUser() user: JwtPayload,
+        @Param('providerInvoiceId') providerInvoiceId: string,
+    ) {
+        return this.billingService.getExternalInvoiceStatus(user.tenantId, providerInvoiceId);
     }
 }
