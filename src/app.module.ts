@@ -27,7 +27,9 @@ import { FilesModule } from './files/files.module';
 import { DiscountsModule } from './discounts/discounts.module';
 import { BranchesModule } from './branches/branches.module';
 import { PosModule } from './pos/pos.module';
+import { BillingModule } from './billing/billing.module';
 import { appConfig } from './config/app.config';
+import { billingConfig } from './config/billing.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
 import { redisConfig } from './config/redis.config';
@@ -38,7 +40,7 @@ import { s3Config } from './config/s3.config';
         // ── Config ──────────────────────────────────────────────────────────────
         ConfigModule.forRoot({
             isGlobal: true,
-            load: [appConfig, databaseConfig, jwtConfig, redisConfig, s3Config],
+            load: [appConfig, databaseConfig, jwtConfig, redisConfig, s3Config, billingConfig],
             envFilePath: ['.env.local', '.env'],
         }),
 
@@ -74,6 +76,7 @@ import { s3Config } from './config/s3.config';
         DiscountsModule,
         BranchesModule,
         PosModule,
+        BillingModule,
     ],
     providers: [
         { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },

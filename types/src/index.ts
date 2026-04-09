@@ -29,6 +29,7 @@ export enum PermissionModule {
   DISCOUNTS = 'discounts',
   BRANCHES = 'branches',
   POS = 'pos',
+  BILLING = 'billing',
 }
 
 export enum PermissionAction {
@@ -85,6 +86,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.DELETE}`,
     `${PermissionModule.USERS}:${PermissionAction.READ}`,
     ...permissionsForModule(PermissionModule.POS),
+    `${PermissionModule.BILLING}:${PermissionAction.READ}`,
+    `${PermissionModule.BILLING}:${PermissionAction.CREATE}`,
   ],
   [UserRole.GROOMER]: [
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.READ}`,
@@ -310,11 +313,13 @@ export const PLAN_MODULES: Record<TenantPlan, PermissionModule[]> = {
     PermissionModule.STORE,
     PermissionModule.INVENTORY,
     PermissionModule.ADOPTIONS,
+    PermissionModule.POS,
     PermissionModule.USERS,
     PermissionModule.TENANT_SETTINGS,
     PermissionModule.NOTIFICATIONS,
     PermissionModule.REPORTS,
     PermissionModule.FILES,
+    PermissionModule.BILLING,
   ],
   [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };
