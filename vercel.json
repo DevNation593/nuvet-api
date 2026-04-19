@@ -6,7 +6,12 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "includeFiles": "dist/**,prisma/**,node_modules/.prisma/**,node_modules/@prisma/client/**"
+      "includeFiles": [
+        "dist/**",
+        "prisma/**",
+        "node_modules/.prisma/**",
+        "node_modules/@prisma/client/**"
+      ]
     }
   },
   "rewrites": [
