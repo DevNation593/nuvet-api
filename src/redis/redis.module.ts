@@ -12,18 +12,26 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => {
                 const logger = new Logger('RedisModule');
+                const host = configService.get<string>('redis.host');
+
+                if (!host) {
+                    logger.warn('REDIS_HOST not configured — using in-memory noop client');
+                    return createNoopRedis();
+                }
+
                 const client = new Redis({
-                    host: configService.get<string>('redis.host', 'localhost'),
+                    host,
                     port: configService.get<number>('redis.port', 6379),
                     password: configService.get<string>('redis.password'),
                     maxRetriesPerRequest: 3,
                     lazyConnect: false,
                     retryStrategy(times) {
-                        return Math.min(times * 50, 2000);
+                        if (times > 5) return null;
+                        return Math.min(times * 200, 2000);
                     },
                 });
                 client.on('connect', () => logger.log('Redis connected'));
-                client.on('error', (err) => logger.error('Redis error', err));
+                client.on('error', (err) => logger.error('Redis error', err.message));
                 return client;
             },
         },
@@ -34,6 +42,24 @@ export class RedisModule implements OnModuleDestroy {
     constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
     async onModuleDestroy() {
-        await this.redis.quit();
+        if (typeof this.redis.quit === 'function') {
+            await this.redis.quit().catch(() => {});
+        }
     }
+}
+
+function createNoopRedis(): Partial<Redis> {
+    const store = new Map<string, string>();
+    return {
+        get: async (key: string) => store.get(key) ?? null,
+        set: async (key: string, value: string) => { store.set(key, value); return 'OK'; },
+        del: async (...keys: string[]) => { keys.forEach((k) => store.delete(k)); return keys.length; },
+        expire: async () => 1,
+        ttl: async () => -1,
+        exists: async (...keys: string[]) => keys.filter((k) => store.has(k)).length,
+        incr: async (key: string) => { const v = parseInt(store.get(key) ?? '0', 10) + 1; store.set(key, String(v)); return v; },
+        quit: async () => 'OK',
+        status: 'ready',
+        on: () => ({} as any),
+    } as unknown as Redis;
 }

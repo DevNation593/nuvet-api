@@ -26,7 +26,6 @@ import {
 } from './dto/auth.dto';
 import { IAuthRepository, AUTH_REPOSITORY } from '../domain/auth.repository';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EmailService } from '../../common/services/email.service';
 
 @Injectable()
 export class AuthService {
@@ -38,7 +37,6 @@ export class AuthService {
         private readonly prisma: PrismaService,
         private jwtService: JwtService,
         private configService: ConfigService,
-        private readonly emailService: EmailService,
     ) {}
 
     async getHomeSummary(
@@ -397,11 +395,7 @@ export class AuthService {
 
         await this.authRepo.createPasswordResetToken(user.id, token, expiresAt);
 
-        try {
-            await this.emailService.sendPasswordReset(user.email, token);
-        } catch (err) {
-            this.logger.error(`Failed to send password reset email to ${user.email}`, err);
-        }
+        this.logger.log(`Password reset token created for ${user.email} (email sending disabled)`);
 
         return { message: 'Si el correo existe, recibirás instrucciones para restablecer tu contraseña.' };
     }
