@@ -13,9 +13,6 @@ const rules: EnvRule[] = [
     { key: 'DATABASE_URL', required: 'always' },
     { key: 'JWT_ACCESS_SECRET', required: 'production', warnIfDefault: 'change-me-in-production' },
     { key: 'JWT_REFRESH_SECRET', required: 'production', warnIfDefault: 'change-me-in-production' },
-    { key: 'REDIS_HOST', required: 'production' },
-    { key: 'S3_ACCESS_KEY', required: 'production', warnIfDefault: 'minioadmin' },
-    { key: 'S3_SECRET_KEY', required: 'production', warnIfDefault: 'minioadmin_secret' },
     { key: 'CORS_ORIGINS', required: 'production' },
 ];
 
