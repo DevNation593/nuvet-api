@@ -118,7 +118,7 @@ async function bootstrap() {
     // ── Swagger ───────────────────────────────────────────────────────────────
     if (nodeEnv !== 'production') {
         const swaggerConfig = new DocumentBuilder()
-            .setTitle('NuVet API')
+            .setTitle('NuVet Tech API')
             .setDescription('Multi-tenant veterinary clinic SaaS API')
             .setVersion('1.0')
             .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
@@ -148,7 +148,7 @@ async function bootstrap() {
     }
 
     await app.listen(port);
-    console.log(`🚀 NuVet API running on: http://localhost:${port}/api/v1`);
+    console.log(`🚀 NuVet Tech API running on: http://localhost:${port}/api/v1`);
     console.log(`📚 Swagger docs: http://localhost:${port}/api/v1/docs`);
 }
 
