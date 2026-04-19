@@ -105,8 +105,10 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
     }
 
     async getRideUrl(accessKey: string): Promise<DocumentUrlResult> {
+        const pdfBuffer = await this.requestBinary(`/v1/documents/ride/${accessKey}`);
+        const base64 = pdfBuffer.toString('base64');
         return {
-            url: `${this.baseUrl}/v1/documents/ride/${accessKey}`,
+            url: `data:application/pdf;base64,${base64}`,
             filename: `ride-${accessKey}.pdf`,
         };
     }
@@ -137,6 +139,48 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
             data?.files?.xml ??
             undefined
         );
+    }
+
+    private async requestBinary(path: string, credentials?: TenantBillingCredentials): Promise<Buffer> {
+        const effectiveKey = credentials?.apiKey || this.apiKey;
+        const effectiveSecret = credentials?.apiSecret || this.apiSecret;
+
+        if (!effectiveKey || !effectiveSecret) {
+            throw new ServiceUnavailableException(
+                'Faltan credenciales de facturación. Configure API Key y API Secret en Ajustes o en variables de entorno.',
+            );
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+        try {
+            const response = await fetch(`${this.baseUrl}${path}`, {
+                method: 'GET',
+                headers: {
+                    'X-API-Key': effectiveKey,
+                    'X-API-Secret': effectiveSecret,
+                },
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                throw new BadGatewayException(
+                    `Error al descargar documento del proveedor (HTTP ${response.status})`,
+                );
+            }
+
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        } catch (error: any) {
+            if (error instanceof BadGatewayException) throw error;
+            if (error?.name === 'AbortError') {
+                throw new ServiceUnavailableException('Timeout al descargar documento del proveedor');
+            }
+            throw new ServiceUnavailableException('No se pudo descargar el documento del proveedor');
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
     private async request(path: string, init: RequestInit, credentials?: TenantBillingCredentials): Promise<any> {
