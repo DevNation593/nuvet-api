@@ -127,6 +127,7 @@ export class BillingService {
                             quantity: true,
                             unitPrice: true,
                             total: true,
+                            product: { select: { name: true } },
                         },
                     },
                 },
@@ -157,7 +158,12 @@ export class BillingService {
                   }
                 : null,
             paymentMethod: ticket.payments?.[0]?.method ?? 'OTHER',
-            items: ticket.items,
+            items: (ticket.items as any[]).map((item: any) => ({
+                description: item.product?.name || item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                total: item.total,
+            })),
         }));
 
         return buildPaginatedResponse(mapped, total, page, limit);
@@ -173,7 +179,9 @@ export class BillingService {
         const ticket = (await (this.prisma.posTicket as any).findFirst({
             where: { id: ticketId, tenantId },
             include: {
-                items: true,
+                items: {
+                    include: { product: { select: { name: true } } },
+                },
                 payments: true,
                 client: {
                     select: {
@@ -554,7 +562,7 @@ export class BillingService {
         const items = ticket.items.map((item: any, index: number) => {
             return {
                 mainCode: (item.productId ?? `POS-LINE-${index + 1}`).slice(0, 25),
-                description: item.description,
+                description: item.product?.name || item.description,
                 quantity: +item.quantity,
                 unitPrice: +item.unitPrice,
                 discount: +(item.discountAmount ?? 0),
