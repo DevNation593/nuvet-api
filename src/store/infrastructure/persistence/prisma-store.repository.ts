@@ -83,15 +83,12 @@ export class PrismaStoreRepository implements IStoreRepository {
     }
 
     async getLowStockProducts(tenantId: string): Promise<ProductData[]> {
-        const products = await this.prisma.product.findMany({
-            where: {
-                tenantId,
-                isActive: true,
-                stock: { lte: this.prisma.product.fields.lowStockThreshold },
-            } as any,
+        const all = await this.prisma.product.findMany({
+            where: { tenantId, isActive: true },
             orderBy: [{ stock: 'asc' }, { updatedAt: 'asc' }],
         });
-        return products as unknown as ProductData[];
+        const lowStock = all.filter((p) => p.stock <= p.lowStockThreshold);
+        return lowStock as unknown as ProductData[];
     }
 
     async findAllOrders(

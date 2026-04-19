@@ -108,13 +108,10 @@ export class AuthService {
                 })
                 : Promise.resolve(null),
             includeStore
-                ? this.prisma.product.count({
-                    where: {
-                        tenantId,
-                        isActive: true,
-                        stock: { lte: this.prisma.product.fields.lowStockThreshold },
-                    } as any,
-                })
+                ? this.prisma.product.findMany({
+                    where: { tenantId, isActive: true },
+                    select: { stock: true, lowStockThreshold: true },
+                }).then((products) => products.filter((p) => p.stock <= p.lowStockThreshold).length)
                 : Promise.resolve(0),
             includeDiscounts
                 ? this.prisma.discount.count({
