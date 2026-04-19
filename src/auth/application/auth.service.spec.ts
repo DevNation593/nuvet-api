@@ -6,7 +6,6 @@ import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { AUTH_REPOSITORY } from '../domain/auth.repository';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EmailService } from '../../common/services/email.service';
 
 const mockUser = {
     id: 'user-1',
@@ -47,12 +46,6 @@ const mockAuthRepo = {
     markEmailVerified: jest.fn(),
 };
 
-const mockEmailService = {
-    send: jest.fn(),
-    sendPasswordReset: jest.fn(),
-    sendEmailVerification: jest.fn(),
-};
-
 describe('AuthService', () => {
     let service: AuthService;
 
@@ -78,7 +71,6 @@ describe('AuthService', () => {
                         }),
                     },
                 },
-                { provide: EmailService, useValue: mockEmailService },
             ],
         }).compile();
 
@@ -149,21 +141,15 @@ describe('AuthService', () => {
 
             const result = await service.forgotPassword({ email: 'nonexistent@example.com' });
             expect(result.message).toContain('Si el correo existe');
-            expect(mockEmailService.sendPasswordReset).not.toHaveBeenCalled();
         });
 
-        it('should send reset email if user exists', async () => {
+        it('should create reset token if user exists', async () => {
             mockAuthRepo.findUserByEmail.mockResolvedValue(mockUser);
             mockAuthRepo.createPasswordResetToken.mockResolvedValue(undefined);
-            mockEmailService.sendPasswordReset.mockResolvedValue(undefined);
 
             const result = await service.forgotPassword({ email: 'test@example.com' });
             expect(result.message).toContain('Si el correo existe');
             expect(mockAuthRepo.createPasswordResetToken).toHaveBeenCalled();
-            expect(mockEmailService.sendPasswordReset).toHaveBeenCalledWith(
-                'test@example.com',
-                expect.any(String),
-            );
         });
     });
 
