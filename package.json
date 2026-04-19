@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build:types": "tsc -p types/tsconfig.json",
-    "build": "prisma generate && pnpm run build:types && nest build",
+    "postinstall": "prisma generate",
+    "build": "pnpm run build:types && nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "NODE_ENV=production node dist/main.js",
@@ -42,6 +43,10 @@
     "@nuvet/types": "file:types",
     "@opentelemetry/api": "^1.9.1",
     "@prisma/client": "^6.19.3",
+    "prisma": "^6.19.3",
+    "@nestjs/cli": "^11.0.19",
+    "@nestjs/schematics": "^11.0.10",
+    "typescript": "^5.9.3",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.4",
@@ -58,8 +63,6 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@nestjs/cli": "^11.0.19",
-    "@nestjs/schematics": "^11.0.10",
     "@nestjs/testing": "^11.1.18",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
@@ -71,9 +74,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/uuid": "^9.0.8",
     "jest": "^30.3.0",
-    "prisma": "^6.19.3",
     "ts-jest": "^29.4.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "ts-node": "^10.9.2"
   }
 }
