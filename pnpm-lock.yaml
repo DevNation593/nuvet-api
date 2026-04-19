@@ -14,6 +14,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1029.0
         version: 3.1029.0
+      '@nestjs/cli':
+        specifier: ^11.0.19
+        version: 11.0.19(@types/node@20.19.39)
       '@nestjs/common':
         specifier: ^11.1.18
         version: 11.1.18(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -35,6 +38,9 @@ importers:
       '@nestjs/schedule':
         specifier: ^6.1.1
         version: 6.1.1(@nestjs/common@11.1.18(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.18)
+      '@nestjs/schematics':
+        specifier: ^11.0.10
+        version: 11.0.10(chokidar@4.0.3)(typescript@5.9.3)
       '@nestjs/swagger':
         specifier: ^11.2.7
         version: 11.2.7(@nestjs/common@11.1.18(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.18)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
@@ -80,6 +86,9 @@ importers:
       passport-jwt:
         specifier: ^4.0.1
         version: 4.0.1
+      prisma:
+        specifier: ^6.19.3
+        version: 6.19.3(typescript@5.9.3)
       prom-client:
         specifier: ^15.1.3
         version: 15.1.3
@@ -92,16 +101,13 @@ importers:
       swagger-ui-express:
         specifier: ^5.0.1
         version: 5.0.1(express@5.2.1)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
     devDependencies:
-      '@nestjs/cli':
-        specifier: ^11.0.19
-        version: 11.0.19(@types/node@20.19.39)
-      '@nestjs/schematics':
-        specifier: ^11.0.10
-        version: 11.0.10(chokidar@4.0.3)(typescript@5.9.3)
       '@nestjs/testing':
         specifier: ^11.1.18
         version: 11.1.18(@nestjs/common@11.1.18(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.18)(@nestjs/platform-express@11.1.18)
@@ -135,18 +141,12 @@ importers:
       jest:
         specifier: ^30.3.0
         version: 30.3.0(@types/node@20.19.39)(ts-node@10.9.2(@types/node@20.19.39)(typescript@5.9.3))
-      prisma:
-        specifier: ^6.19.3
-        version: 6.19.3(typescript@5.9.3)
       ts-jest:
         specifier: ^29.4.9
         version: 29.4.9(@babel/core@7.29.0)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.29.0))(jest-util@30.3.0)(jest@30.3.0(@types/node@20.19.39)(ts-node@10.9.2(@types/node@20.19.39)(typescript@5.9.3)))(typescript@5.9.3)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.39)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
 
 packages:
 
