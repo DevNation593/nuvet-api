@@ -10,7 +10,6 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { AUTH_REPOSITORY } from './domain/auth.repository';
 import { PrismaAuthRepository } from './infrastructure/persistence/prisma-auth.repository';
-import { EmailService } from '../common/services/email.service';
 
 @Module({
     imports: [
@@ -29,11 +28,10 @@ import { EmailService } from '../common/services/email.service';
     providers: [
         { provide: AUTH_REPOSITORY, useClass: PrismaAuthRepository },
         AuthService,
-        EmailService,
         { provide: APP_GUARD, useClass: JwtAuthGuard },
         { provide: APP_GUARD, useClass: RolesGuard },
         { provide: APP_GUARD, useClass: PermissionsGuard },
     ],
-    exports: [AuthService, EmailService, JwtModule],
+    exports: [AuthService, JwtModule],
 })
 export class AuthModule { }
