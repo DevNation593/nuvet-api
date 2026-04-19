@@ -15,6 +15,7 @@ import * as compression from 'compression';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { TraceInterceptor } from './observability/trace.interceptor';
 import { Request, Response } from 'express';
 
 const expressApp = express();
@@ -42,8 +43,23 @@ async function bootstrap(): Promise<void> {
         .map((origin) => origin.trim())
         .filter(Boolean);
 
+    const isLocalDevOrigin = (origin: string) =>
+        /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\d{1,3}(?:\.\d{1,3}){3})(:\d+)?$/i.test(origin);
+
     app.enableCors({
-        origin: corsOrigins,
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+
+            if (corsOrigins.includes('*') || corsOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+
+            if (nodeEnv !== 'production' && isLocalDevOrigin(origin)) {
+                return callback(null, true);
+            }
+
+            return callback(new Error(`CORS origin not allowed: ${origin}`), false);
+        },
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
     });
@@ -62,12 +78,12 @@ async function bootstrap(): Promise<void> {
         }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
-    app.useGlobalInterceptors(new TransformInterceptor());
+    app.useGlobalInterceptors(new TraceInterceptor(), new TransformInterceptor());
 
     // ── Swagger (non-production only) ─────────────────────────────────────────
     if (nodeEnv !== 'production') {
         const swaggerConfig = new DocumentBuilder()
-            .setTitle('NuVet API')
+            .setTitle('NuVet Tech API')
             .setDescription('Multi-tenant veterinary clinic SaaS API')
             .setVersion('1.0')
             .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')

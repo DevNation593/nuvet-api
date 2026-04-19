@@ -7,8 +7,13 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
 import {
     AppointmentsReportQueryDto,
+    ClientSegmentationQueryDto,
+    InventoryKardexQueryDto,
     ExpiringStockReportQueryDto,
+    PosDiscountUsageReportQueryDto,
+    RestockSuggestionsQueryDto,
     RevenueReportQueryDto,
+    TransactionsEvidenceQueryDto,
     VaccinationsReportQueryDto,
 } from '../../application/dto/reports.dto';
 
@@ -73,6 +78,91 @@ export class ReportsController {
         @Query() query: ExpiringStockReportQueryDto,
     ) {
         return this.service.getExpiringStock(user.tenantId, query.days ?? 30);
+    }
+
+    @Get('transactions-evidence')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.RECEPTIONIST)
+    @Permissions(`${PermissionModule.REPORTS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Transaction status and evidence trail (POS)' })
+    transactionsEvidence(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: TransactionsEvidenceQueryDto,
+    ) {
+        return this.service.getTransactionsEvidence(
+            user.tenantId,
+            query.from,
+            query.to,
+            query.status,
+        );
+    }
+
+    @Get('pos-discount-usage')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.RECEPTIONIST)
+    @Permissions(`${PermissionModule.REPORTS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'POS discount usage report by date range and branch' })
+    posDiscountUsage(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: PosDiscountUsageReportQueryDto,
+    ) {
+        return this.service.getPosDiscountUsageReport(
+            user.tenantId,
+            query.from,
+            query.to,
+            query.branchId,
+            query.discountId,
+        );
+    }
+
+    @Get('inventory-kardex')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.INVENTORY)
+    @Permissions(`${PermissionModule.REPORTS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Inventory kardex with movement history and running balance' })
+    inventoryKardex(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: InventoryKardexQueryDto,
+    ) {
+        return this.service.getInventoryKardex(user.tenantId, {
+            productId: query.productId,
+            from: query.from,
+            to: query.to,
+        });
+    }
+
+    @Get('restock-suggestions')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.INVENTORY)
+    @Permissions(`${PermissionModule.REPORTS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Low-stock alerts with suggested replenishment quantities' })
+    restockSuggestions(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: RestockSuggestionsQueryDto,
+    ) {
+        return this.service.getRestockSuggestions(user.tenantId, query.lookbackDays ?? 30);
+    }
+
+    @Get('client-segmentation')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.RECEPTIONIST)
+    @Permissions(`${PermissionModule.REPORTS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Segment frequent and inactive clients' })
+    clientSegmentation(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: ClientSegmentationQueryDto,
+    ) {
+        return this.service.getClientSegmentation(
+            user.tenantId,
+            query.minFrequentPurchases ?? 3,
+            query.inactiveDays ?? 60,
+        );
+    }
+
+    @Get('executive-kpis')
+    @Roles(UserRole.CLINIC_ADMIN)
+    @Permissions(`${PermissionModule.REPORTS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Executive KPIs by branch and professional' })
+    executiveKpis(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: RevenueReportQueryDto,
+    ) {
+        return this.service.getExecutiveKpis(user.tenantId, query.from, query.to);
     }
 }
 

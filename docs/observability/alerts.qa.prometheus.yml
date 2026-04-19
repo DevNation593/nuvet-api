@@ -1,0 +1,61 @@
+groups:
+  - name: nuvet-api-alerts-qa
+    rules:
+      - alert: NuvetApiHighP95LatencyQa
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(nuvet_api_http_request_duration_ms_bucket[5m])) by (le)
+          ) > 650
+        for: 12m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: qa
+        annotations:
+          summary: "[qa] High API latency p95"
+          description: "API p95 latency is above 650ms for 12m in QA."
+
+      - alert: NuvetApiHigh5xxRateQa
+        expr: |
+          (
+            sum(rate(nuvet_api_http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(nuvet_api_http_requests_total[5m])), 1)
+          ) > 0.03
+        for: 7m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: qa
+        annotations:
+          summary: "[qa] High API 5xx rate"
+          description: "The 5xx ratio is above 3% for 7m in QA."
+
+      - alert: NuvetApiNearZeroTrafficQa
+        expr: |
+          sum(rate(nuvet_api_http_requests_total[10m])) < 0.03
+        for: 20m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: qa
+        annotations:
+          summary: "[qa] Near-zero API traffic"
+          description: "Traffic is near zero for 20m in QA."
+
+      - alert: NuvetApiReadinessEndpointDownQa
+        expr: |
+          probe_success{job="nuvet-api-readiness", environment="qa"} == 0
+        for: 4m
+        labels:
+          severity: critical
+          team: platform
+          service: nuvet-api
+          environment: qa
+        annotations:
+          summary: "[qa] Readiness probe failing"
+          description: "Readiness checks failed for at least 4 minutes in QA."

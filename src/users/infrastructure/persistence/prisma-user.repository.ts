@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { IUserRepository, CreateUserData } from '../../domain/user.repository';
+import { sanitizeSortBy } from '../../../common/dto/pagination.dto';
 
 const USER_SELECT = {
     id: true,
@@ -29,7 +30,7 @@ export class PrismaUserRepository implements IUserRepository {
                 where: { tenantId },
                 skip: query.skip,
                 take: query.take,
-                orderBy: { [query.sortBy || 'createdAt']: query.sortOrder || 'desc' },
+                orderBy: { [sanitizeSortBy(query.sortBy)]: query.sortOrder || 'desc' },
                 select: USER_SELECT,
             }),
             this.prisma.user.count({ where: { tenantId } }),
@@ -47,6 +48,7 @@ export class PrismaUserRepository implements IUserRepository {
     async findByEmail(tenantId: string, email: string): Promise<unknown | null> {
         return this.prisma.user.findUnique({
             where: { tenantId_email: { tenantId, email } },
+            select: { id: true },
         });
     }
 

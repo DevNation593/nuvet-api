@@ -16,6 +16,7 @@ import { CreateDiscountDto, UpdateDiscountDto, ApplyDiscountDto } from '../../ap
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { HttpCache } from '../../../common/decorators/http-cache.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
@@ -50,6 +51,7 @@ export class DiscountsController {
     }
 
     @Get('active')
+    @HttpCache(120)
     @Permissions(`${PermissionModule.DISCOUNTS}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'Listar descuentos activos y vigentes ahora' })
     findActive(@CurrentUser() user: JwtPayload) {

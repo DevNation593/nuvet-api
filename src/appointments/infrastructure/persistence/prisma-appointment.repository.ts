@@ -8,6 +8,8 @@ import {
     UpdateAppointmentData,
     CreateAuditLogData,
     AvailabilityData,
+    TenantDayContext,
+    StaffDayData,
     StaffMember,
 } from '../../domain/appointment.repository';
 import { AppointmentStatus, UserRole } from '@nuvet/types';
@@ -29,6 +31,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             ...(filter.vetId && { vetId: filter.vetId }),
             ...(filter.type && { type: filter.type }),
             ...(filter.status && { status: filter.status }),
+            ...(filter.branchId && { branchId: filter.branchId }),
         };
 
         if (ownerId) {
@@ -133,8 +136,10 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         staffId: string,
         dayStr: string,
         date: Date,
+        branchId?: string,
     ): Promise<AvailabilityData> {
         const dayOfWeek = date.getDay();
+        const branchFilter = branchId ?? null;
 
         const [holiday, clinicHours, schedule, blocks, booked] = await Promise.all([
             this.prisma.holiday.findFirst({
@@ -147,10 +152,15 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 },
             }),
             this.prisma.clinicHours.findFirst({
-                where: { tenantId, branchId: null, dayOfWeek },
+                where: { tenantId, branchId: branchFilter, dayOfWeek },
             }),
             this.prisma.staffSchedule.findFirst({
-                where: { tenantId, userId: staffId, dayOfWeek },
+                where: {
+                    tenantId,
+                    userId: staffId,
+                    dayOfWeek,
+                    ...(branchId ? { branchId } : {}),
+                },
             }),
             this.prisma.block.findMany({
                 where: {
@@ -196,6 +206,69 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 scheduledAt: new Date(a.scheduledAt),
                 durationMinutes: a.durationMinutes,
             })),
+        };
+    }
+
+    async getTenantDayContext(tenantId: string, dayStr: string, date: Date, branchId?: string): Promise<TenantDayContext> {
+        const dayOfWeek = date.getDay();
+        const branchFilter = branchId ?? null;
+        const [holiday, clinicHours] = await Promise.all([
+            this.prisma.holiday.findFirst({
+                where: {
+                    tenantId,
+                    date: { gte: new Date(dayStr), lte: new Date(dayStr + 'T23:59:59.999Z') },
+                },
+            }),
+            this.prisma.clinicHours.findFirst({
+                where: { tenantId, branchId: branchFilter, dayOfWeek },
+            }),
+        ]);
+
+        return {
+            holiday: holiday ? { id: (holiday as any).id } : null,
+            clinicHours: clinicHours
+                ? { openTime: (clinicHours as any).openTime, closeTime: (clinicHours as any).closeTime }
+                : null,
+        };
+    }
+
+    async getStaffDayData(tenantId: string, staffId: string, dayStr: string, date: Date, branchId?: string): Promise<StaffDayData> {
+        const dayOfWeek = date.getDay();
+        const [schedule, blocks, booked] = await Promise.all([
+            this.prisma.staffSchedule.findFirst({
+                where: {
+                    tenantId,
+                    userId: staffId,
+                    dayOfWeek,
+                    ...(branchId ? { branchId } : {}),
+                },
+            }),
+            this.prisma.block.findMany({
+                where: {
+                    tenantId,
+                    OR: [{ userId: null }, { userId: staffId }],
+                    startAt: { lt: new Date(dayStr + 'T23:59:59.999Z') },
+                    endAt: { gt: new Date(dayStr + 'T00:00:00.000Z') },
+                },
+            }),
+            this.prisma.appointment.findMany({
+                where: {
+                    tenantId,
+                    OR: [{ vetId: staffId }, { groomerId: staffId }],
+                    scheduledAt: {
+                        gte: new Date(dayStr + 'T00:00:00.000Z'),
+                        lte: new Date(dayStr + 'T23:59:59.999Z'),
+                    },
+                    status: { notIn: [AppointmentStatus.CANCELLED as any] },
+                },
+                select: { scheduledAt: true, durationMinutes: true },
+            }),
+        ]);
+
+        return {
+            schedule: schedule ? { startTime: (schedule as any).startTime, endTime: (schedule as any).endTime } : null,
+            blocks: (blocks as any[]).map((b) => ({ startTime: new Date(b.startAt), endTime: new Date(b.endAt) })),
+            booked: (booked as any[]).map((a) => ({ scheduledAt: new Date(a.scheduledAt), durationMinutes: a.durationMinutes })),
         };
     }
 

@@ -1,0 +1,61 @@
+groups:
+  - name: nuvet-api-alerts-prod
+    rules:
+      - alert: NuvetApiHighP95LatencyProd
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(nuvet_api_http_request_duration_ms_bucket[5m])) by (le)
+          ) > 400
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: prod
+        annotations:
+          summary: "[prod] High API latency p95"
+          description: "API p95 latency is above 400ms for 10m in production."
+
+      - alert: NuvetApiHigh5xxRateProd
+        expr: |
+          (
+            sum(rate(nuvet_api_http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(nuvet_api_http_requests_total[5m])), 1)
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          service: nuvet-api
+          environment: prod
+        annotations:
+          summary: "[prod] High API 5xx rate"
+          description: "The 5xx ratio is above 1% for 5m in production."
+
+      - alert: NuvetApiNearZeroTrafficProd
+        expr: |
+          sum(rate(nuvet_api_http_requests_total[10m])) < 0.05
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: prod
+        annotations:
+          summary: "[prod] Near-zero API traffic"
+          description: "Traffic is near zero for 15m in production."
+
+      - alert: NuvetApiReadinessEndpointDownProd
+        expr: |
+          probe_success{job="nuvet-api-readiness", environment="prod"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          team: platform
+          service: nuvet-api
+          environment: prod
+        annotations:
+          summary: "[prod] Readiness probe failing"
+          description: "Readiness checks failed for at least 3 minutes in production."

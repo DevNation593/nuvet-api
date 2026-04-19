@@ -39,12 +39,12 @@ export class StoreService {
 
     async updateProduct(tenantId: string, id: string, dto: UpdateProductDto) {
         await this.findOneProduct(tenantId, id);
-        return this.storeRepo.updateProduct(id, dto as Record<string, unknown>);
+        return this.storeRepo.updateProduct(tenantId, id, dto as Record<string, unknown>);
     }
 
     async deleteProduct(tenantId: string, id: string) {
         await this.findOneProduct(tenantId, id);
-        return this.storeRepo.deactivateProduct(id);
+        return this.storeRepo.deactivateProduct(tenantId, id);
     }
 
     // Inventory
@@ -82,14 +82,16 @@ export class StoreService {
     }
 
     async createOrder(tenantId: string, clientId: string, dto: CreateOrderDto) {
-        const products = await this.storeRepo.findProductsByIds(tenantId, dto.items.map((i) => i.productId));
+        const uniqueProductIds = [...new Set(dto.items.map((i) => i.productId))];
+        const products = await this.storeRepo.findProductsByIds(tenantId, uniqueProductIds);
+        const productsById = new Map(products.map((product) => [product.id, product]));
 
-        if (products.length !== dto.items.length)
+        if (products.length !== uniqueProductIds.length)
             throw new NotFoundException('One or more products not found');
 
         const itemsWithDiscount = await Promise.all(
             dto.items.map(async (item) => {
-                const product = products.find((p) => p.id === item.productId)!;
+                const product = productsById.get(item.productId)!;
                 if (product.stock < item.quantity)
                     throw new BadRequestException(`Insufficient stock for: ${product.name}`);
 

@@ -8,6 +8,7 @@ import { CreateBranchDto, UpdateBranchDto } from '../../application/dto/branch.d
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { HttpCache } from '../../../common/decorators/http-cache.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
 
 @ApiTags('branches')
@@ -17,6 +18,7 @@ export class BranchesController {
     constructor(private branchesService: BranchesService) { }
 
     @Get()
+    @HttpCache(180)
     @Permissions(`${PermissionModule.BRANCHES}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'Listar sucursales del tenant' })
     @ApiQuery({ name: 'onlyActive', required: false, type: Boolean })

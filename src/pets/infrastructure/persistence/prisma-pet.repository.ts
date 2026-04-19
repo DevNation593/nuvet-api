@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { IPetRepository, CreatePetData, PetWithDetails } from '../../domain/pet.repository';
+import { IPetRepository, CreatePetData, PetWithDetails, ClinicalHistory } from '../../domain/pet.repository';
 import { PetEntity } from '../../domain/pet.entity';
+import { sanitizeSortBy } from '../../../common/dto/pagination.dto';
 
 @Injectable()
 export class PrismaPetRepository implements IPetRepository {
@@ -11,14 +12,19 @@ export class PrismaPetRepository implements IPetRepository {
         tenantId: string,
         query: { skip: number; take: number; sortBy?: string; sortOrder?: 'asc' | 'desc' },
         ownerId?: string,
+        includeInactive = false,
     ): Promise<{ data: PetWithDetails[]; total: number }> {
-        const where = { tenantId, isActive: true, ...(ownerId ? { ownerId } : {}) };
+        const where = {
+            tenantId,
+            ...(includeInactive ? {} : { isActive: true }),
+            ...(ownerId ? { ownerId } : {}),
+        };
         const [data, total] = await Promise.all([
             this.prisma.pet.findMany({
                 where,
                 skip: query.skip,
                 take: query.take,
-                orderBy: { [query.sortBy ?? 'createdAt']: query.sortOrder ?? 'desc' },
+                orderBy: { [sanitizeSortBy(query.sortBy)]: query.sortOrder ?? 'desc' },
                 include: {
                     owner: { select: { id: true, firstName: true, lastName: true, email: true } },
                 },
@@ -30,7 +36,7 @@ export class PrismaPetRepository implements IPetRepository {
 
     async findOne(tenantId: string, id: string, ownerId?: string): Promise<PetWithDetails | null> {
         const pet = await this.prisma.pet.findFirst({
-            where: { id, tenantId, isActive: true, ...(ownerId ? { ownerId } : {}) },
+            where: { id, tenantId, ...(ownerId ? { ownerId } : {}) },
             include: {
                 owner: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
                 vaccinations: { orderBy: { administeredAt: 'desc' }, take: 5 },
@@ -54,5 +60,51 @@ export class PrismaPetRepository implements IPetRepository {
 
     async softDelete(id: string): Promise<void> {
         await this.prisma.pet.update({ where: { id }, data: { isActive: false } });
+    }
+
+    async reactivate(id: string): Promise<void> {
+        await this.prisma.pet.update({ where: { id }, data: { isActive: true } });
+    }
+
+    async getClinicalHistory(tenantId: string, id: string): Promise<ClinicalHistory | null> {
+        const pet = await this.prisma.pet.findFirst({
+            where: { id, tenantId },
+            include: {
+                owner: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+            },
+        });
+        if (!pet) return null;
+
+        const [medicalRecords, vaccinations, surgeries] = await Promise.all([
+            this.prisma.medicalRecord.findMany({
+                where: { petId: id, tenantId },
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    vet: { select: { id: true, firstName: true, lastName: true } },
+                    appointment: { select: { id: true, scheduledAt: true, type: true } },
+                },
+            }),
+            this.prisma.vaccination.findMany({
+                where: { petId: id, tenantId },
+                orderBy: { administeredAt: 'desc' },
+                include: {
+                    vet: { select: { id: true, firstName: true, lastName: true } },
+                },
+            }),
+            this.prisma.surgery.findMany({
+                where: { petId: id, tenantId },
+                orderBy: { scheduledAt: 'desc' },
+                include: {
+                    vet: { select: { id: true, firstName: true, lastName: true } },
+                },
+            }),
+        ]);
+
+        return {
+            pet: pet as unknown as PetWithDetails,
+            medicalRecords,
+            vaccinations,
+            surgeries,
+        };
     }
 }

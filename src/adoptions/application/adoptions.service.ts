@@ -37,7 +37,7 @@ export class AdoptionsService {
 
     async submitApplication(tenantId: string, id: string, dto: ApplyAdoptionDto, applicantId?: string) {
         await this.findOne(tenantId, id);
-        return this.adoptionRepo.update(id, {
+        return this.adoptionRepo.update(tenantId, id, {
             status: AdoptionStatus.PENDING,
             applicantId,
             applicantName: dto.applicantName,
@@ -49,7 +49,7 @@ export class AdoptionsService {
 
     async updateStatus(tenantId: string, id: string, dto: UpdateAdoptionStatusDto) {
         await this.findOne(tenantId, id);
-        return this.adoptionRepo.update(id, {
+        return this.adoptionRepo.update(tenantId, id, {
             status: dto.status,
             rejectionReason: dto.rejectionReason,
         });

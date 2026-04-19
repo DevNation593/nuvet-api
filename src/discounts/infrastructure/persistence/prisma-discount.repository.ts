@@ -44,7 +44,7 @@ export class PrismaDiscountRepository implements IDiscountRepository {
         return this.prisma.discount.findFirst({
             where: { id, tenantId },
             include: {
-                orderItems: { orderBy: { createdAt: 'desc' }, take: 10 },
+                usages: { orderBy: { createdAt: 'desc' }, take: 10 },
             },
         });
     }

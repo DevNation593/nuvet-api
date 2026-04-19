@@ -2,6 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
+    "rootDir": ".",
+    "forceConsistentCasingInFileNames": true,
     "outDir": "./dist-seed"
   },
   "include": [

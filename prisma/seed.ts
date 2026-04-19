@@ -24,7 +24,7 @@ type SeedUser = {
 
 const tenantsToSeed: SeedTenant[] = [
     {
-        name: 'NuVet Free Demo',
+        name: 'NuVet Tech Free Demo',
         slug: 'demo-free',
         plan: TenantPlan.FREE,
         email: 'contacto@demo-free.com',
@@ -32,7 +32,7 @@ const tenantsToSeed: SeedTenant[] = [
         address: '101 Free Avenue',
     },
     {
-        name: 'NuVet Starter Demo',
+        name: 'NuVet Tech Starter Demo',
         slug: 'demo-starter',
         plan: TenantPlan.STARTER,
         email: 'contacto@demo-starter.com',
@@ -40,7 +40,7 @@ const tenantsToSeed: SeedTenant[] = [
         address: '202 Starter Street',
     },
     {
-        name: 'NuVet Pro Demo',
+        name: 'NuVet Tech Pro Demo',
         slug: 'demo-pro',
         plan: TenantPlan.PRO,
         email: 'contacto@demo-pro.com',
@@ -48,7 +48,7 @@ const tenantsToSeed: SeedTenant[] = [
         address: '303 Pro Boulevard',
     },
     {
-        name: 'NuVet Enterprise Demo',
+        name: 'NuVet Tech Enterprise Demo',
         slug: 'demo-enterprise',
         plan: TenantPlan.ENTERPRISE,
         email: 'contacto@demo-enterprise.com',

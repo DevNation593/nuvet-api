@@ -7,11 +7,11 @@ import { Type } from 'class-transformer';
 import { StockMovementType, OrderStatus } from '@nuvet/types';
 
 export class CreateProductDto {
-    @ApiProperty() @IsString() @IsNotEmpty() name: string;
-    @ApiProperty() @IsString() @IsNotEmpty() sku: string;
+    @ApiProperty() @IsString() @IsNotEmpty() name!: string;
+    @ApiProperty() @IsString() @IsNotEmpty() sku!: string;
     @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
-    @ApiProperty({ example: 'Food' }) @IsString() @IsNotEmpty() category: string;
-    @ApiProperty({ example: 19.99 }) @Type(() => Number) @IsNumber() @IsPositive() price: number;
+    @ApiProperty({ example: 'Food' }) @IsString() @IsNotEmpty() category!: string;
+    @ApiProperty({ example: 19.99 }) @Type(() => Number) @IsNumber() @IsPositive() price!: number;
     @ApiPropertyOptional({ example: 100 }) @IsOptional() @Type(() => Number) @IsInt() @Min(0) stock?: number;
     @ApiPropertyOptional({ example: 5 }) @IsOptional() @Type(() => Number) @IsInt() @Min(0) lowStockThreshold?: number;
 }
@@ -23,19 +23,16 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
 export class StockAdjustmentDto {
     @ApiProperty({ enum: StockMovementType })
     @IsEnum(StockMovementType)
-    type: StockMovementType;
-
+    type!: StockMovementType;
     @ApiProperty({ description: 'Product ID' })
     @IsString()
     @IsNotEmpty()
-    productId: string;
-
+    productId!: string;
     @ApiProperty({ example: 10 })
     @Type(() => Number)
     @IsInt()
     @IsPositive()
-    quantity: number;
-
+    quantity!: number;
     @ApiPropertyOptional({ example: 'Delivery from supplier' })
     @IsOptional()
     @IsString()
@@ -46,13 +43,12 @@ export class CreateOrderItemDto {
     @ApiProperty({ description: 'Product ID' })
     @IsString()
     @IsNotEmpty()
-    productId: string;
-
+    productId!: string;
     @ApiProperty({ example: 2, minimum: 1 })
     @Type(() => Number)
     @IsInt()
     @Min(1)
-    quantity: number;
+    quantity!: number;
 }
 
 export class CreateOrderDto {
@@ -60,8 +56,7 @@ export class CreateOrderDto {
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => CreateOrderItemDto)
-    items: CreateOrderItemDto[];
-
+    items!: CreateOrderItemDto[];
     @ApiPropertyOptional({ description: 'ID de descuento a aplicar sobre el total del pedido' })
     @IsOptional()
     @IsString()
@@ -76,5 +71,6 @@ export class CreateOrderDto {
 export class UpdateOrderStatusDto {
     @ApiProperty({ enum: OrderStatus })
     @IsEnum(OrderStatus)
-    status: OrderStatus;
+    status!: OrderStatus;
 }
+

@@ -1,13 +1,21 @@
-import { IsOptional, IsPositive, IsInt, Min, Max, IsIn, IsString } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsIn, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
+const DEFAULT_SORT_ALLOWED = [
+    'createdAt', 'updatedAt', 'name', 'firstName', 'lastName',
+    'scheduledAt', 'status', 'email', 'sku', 'price', 'stock',
+] as const;
+
+const MAX_OFFSET = 10_000;
+
 export class PaginationQueryDto {
-    @ApiPropertyOptional({ default: 1, minimum: 1 })
+    @ApiPropertyOptional({ default: 1, minimum: 1, maximum: 500 })
     @IsOptional()
     @Type(() => Number)
     @IsInt()
     @Min(1)
+    @Max(500)
     page?: number = 1;
 
     @ApiPropertyOptional({ default: 20, minimum: 1, maximum: 100 })
@@ -53,10 +61,19 @@ export function buildPaginatedResponse<T>(
 export function buildPaginationArgs(query: PaginationQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
+    const rawSkip = (page - 1) * limit;
     return {
-        skip: (page - 1) * limit,
+        skip: Math.min(rawSkip, MAX_OFFSET),
         take: limit,
         page,
         limit,
     };
+}
+
+export function sanitizeSortBy(
+    value: string | undefined,
+    allowedFields: readonly string[] = DEFAULT_SORT_ALLOWED,
+): string {
+    if (!value) return 'createdAt';
+    return allowedFields.includes(value) ? value : 'createdAt';
 }

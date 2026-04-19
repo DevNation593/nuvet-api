@@ -57,8 +57,11 @@ export class PrismaVaccinationRepository implements IVaccinationRepository {
     }
 
     async petExists(tenantId: string, petId: string): Promise<boolean> {
-        const count = await this.prisma.pet.count({ where: { id: petId, tenantId } });
-        return count > 0;
+        const pet = await this.prisma.pet.findFirst({
+            where: { id: petId, tenantId },
+            select: { id: true },
+        });
+        return Boolean(pet);
     }
 
     async create(data: CreateVaccinationData): Promise<unknown> {

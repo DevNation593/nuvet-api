@@ -12,7 +12,7 @@ export interface CreateClientData {
 export interface IClientRepository {
     findAll(tenantId: string, query: { skip: number; take: number }): Promise<{ data: ClientEntity[]; total: number }>;
     findOne(tenantId: string, id: string): Promise<(ClientEntity & { pets?: unknown[] }) | null>;
-    findByEmail(tenantId: string, email: string): Promise<ClientEntity | null>;
+    findByEmail(tenantId: string, email: string): Promise<{ id: string } | null>;
     create(data: CreateClientData): Promise<ClientEntity>;
     update(id: string, data: Partial<CreateClientData & { isActive: boolean }>): Promise<ClientEntity>;
     remove(id: string): Promise<void>;

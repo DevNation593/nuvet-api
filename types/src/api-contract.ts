@@ -139,6 +139,7 @@ export interface CreateAppointmentRequest {
     vetId?: string;
     groomerId?: string;
     notes?: string;
+    branchId?: string;
 }
 
 export interface UpdateAppointmentStatusRequest {
