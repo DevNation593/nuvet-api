@@ -444,4 +444,14 @@ export class PrismaPosRepository implements IPosRepository {
             select: { id: true, name: true, price: true, stock: true },
         });
     }
+
+    async findProductsByIds(
+        tenantId: string,
+        ids: string[],
+    ): Promise<Array<{ id: string; name: string }>> {
+        return this.prisma.product.findMany({
+            where: { id: { in: ids }, tenantId },
+            select: { id: true, name: true },
+        });
+    }
 }
