@@ -40,7 +40,7 @@
     "@nestjs/swagger": "^11.2.7",
     "@nestjs/terminus": "^11.1.1",
     "@nestjs/throttler": "^6.5.0",
-    "@nuvet/types": "file:types",
+    "@nuvet/types": "link:types",
     "@opentelemetry/api": "^1.9.1",
     "@prisma/client": "^6.19.3",
     "prisma": "^6.19.3",
