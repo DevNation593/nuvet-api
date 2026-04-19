@@ -39,6 +39,19 @@ export interface IMedicalRecordRepository {
     ): Promise<unknown>;
     createAttachment(data: CreateAttachmentData): Promise<unknown>;
     findRecord(tenantId: string, id: string): Promise<{ id: string } | null>;
+    findAttachmentsByRecord(
+        tenantId: string,
+        id: string,
+    ): Promise<
+        Array<{
+            id: string;
+            key: string;
+            filename: string;
+            contentType: string;
+            size: number;
+            createdAt: Date;
+        }>
+    >;
 }
 
 export const MEDICAL_RECORD_REPOSITORY = Symbol('IMedicalRecordRepository');

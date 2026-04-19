@@ -1,0 +1,62 @@
+# Legacy/default profile.
+# Prefer environment-specific files:
+# - alerts.dev.prometheus.yml
+# - alerts.qa.prometheus.yml
+# - alerts.prod.prometheus.yml
+groups:
+  - name: nuvet-api-alerts
+    rules:
+      - alert: NuvetApiHighP95Latency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(nuvet_api_http_request_duration_ms_bucket[5m])) by (le)
+          ) > 500
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+        annotations:
+          summary: "High API latency p95"
+          description: "API p95 latency is above 500ms for 10m."
+
+      - alert: NuvetApiHigh5xxRate
+        expr: |
+          (
+            sum(rate(nuvet_api_http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(nuvet_api_http_requests_total[5m])), 1)
+          ) > 0.02
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          service: nuvet-api
+        annotations:
+          summary: "High API 5xx rate"
+          description: "The 5xx ratio is above 2% for 5m."
+
+      - alert: NuvetApiNearZeroTrafficBusinessHours
+        expr: |
+          sum(rate(nuvet_api_http_requests_total[10m])) < 0.05
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+        annotations:
+          summary: "Near-zero API traffic"
+          description: "Traffic is near zero for 15m. Tune with business-hour routing if needed."
+
+      - alert: NuvetApiReadinessEndpointDown
+        expr: |
+          probe_success{job="nuvet-api-readiness"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          team: platform
+          service: nuvet-api
+        annotations:
+          summary: "Readiness probe failing"
+          description: "Readiness checks have failed for at least 3 minutes."

@@ -62,6 +62,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.VACCINATIONS}:${PermissionAction.CREATE}`,
     `${PermissionModule.VACCINATIONS}:${PermissionAction.UPDATE}`,
     ...permissionsForModule(PermissionModule.SURGERIES),
+    `${PermissionModule.BRANCHES}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.REPORTS}:${PermissionAction.READ}`,
     `${PermissionModule.FILES}:${PermissionAction.READ}`,
@@ -81,6 +82,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.STORE}:${PermissionAction.CREATE}`,
     `${PermissionModule.STORE}:${PermissionAction.UPDATE}`,
     `${PermissionModule.ADOPTIONS}:${PermissionAction.READ}`,
+    `${PermissionModule.BRANCHES}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.UPDATE}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.DELETE}`,
@@ -94,6 +96,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.UPDATE}`,
     ...permissionsForModule(PermissionModule.AESTHETICS),
     `${PermissionModule.PETS}:${PermissionAction.READ}`,
+    `${PermissionModule.BRANCHES}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
   ],
   [UserRole.INVENTORY]: [
@@ -314,6 +317,8 @@ export const PLAN_MODULES: Record<TenantPlan, PermissionModule[]> = {
     PermissionModule.INVENTORY,
     PermissionModule.ADOPTIONS,
     PermissionModule.POS,
+    PermissionModule.DISCOUNTS,
+    PermissionModule.BRANCHES,
     PermissionModule.USERS,
     PermissionModule.TENANT_SETTINGS,
     PermissionModule.NOTIFICATIONS,
@@ -349,6 +354,8 @@ export interface Tenant {
   logoUrl?: string;
   phone?: string;
   address?: string;
+  email?: string;
+  website?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -1,0 +1,48 @@
+groups:
+  - name: nuvet-api-alerts-dev
+    rules:
+      - alert: NuvetApiHighP95LatencyDev
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(nuvet_api_http_request_duration_ms_bucket[5m])) by (le)
+          ) > 900
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: dev
+        annotations:
+          summary: "[dev] High API latency p95"
+          description: "API p95 latency is above 900ms for 15m in dev."
+
+      - alert: NuvetApiHigh5xxRateDev
+        expr: |
+          (
+            sum(rate(nuvet_api_http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(nuvet_api_http_requests_total[5m])), 1)
+          ) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: dev
+        annotations:
+          summary: "[dev] High API 5xx rate"
+          description: "The 5xx ratio is above 5% for 10m in dev."
+
+      - alert: NuvetApiReadinessEndpointDownDev
+        expr: |
+          probe_success{job="nuvet-api-readiness", environment="dev"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          service: nuvet-api
+          environment: dev
+        annotations:
+          summary: "[dev] Readiness probe failing"
+          description: "Readiness checks failed for at least 5 minutes in dev."

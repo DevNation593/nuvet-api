@@ -35,6 +35,8 @@ export interface ElectronicInvoicePayload {
     buyer: InvoiceParty;
     items: ElectronicInvoiceItem[];
     payments?: ElectronicInvoicePayment[];
+    /** SRI payment method code (01=cash, 19=card, 20=other). When set, a single payment is generated for the full total. */
+    paymentMethodCode?: string;
 }
 
 export interface IssueElectronicInvoiceResult {
@@ -44,6 +46,8 @@ export interface IssueElectronicInvoiceResult {
     accessKey?: string;
     authorizationCode?: string;
     authorizedAt?: string;
+    pdfUrl?: string;
+    xmlUrl?: string;
     raw?: unknown;
 }
 
@@ -54,12 +58,28 @@ export interface ElectronicInvoiceStatusResult {
     accessKey?: string;
     authorizedAt?: string;
     rejectedReason?: string;
+    pdfUrl?: string;
+    xmlUrl?: string;
     raw?: unknown;
 }
 
+export interface DocumentUrlResult {
+    url: string;
+    filename?: string;
+}
+
+export interface TenantBillingCredentials {
+    apiKey?: string;
+    apiSecret?: string;
+    establishmentCode?: string;
+    emissionPointCode?: string;
+}
+
 export interface IElectronicInvoiceProvider {
-    issueInvoice(payload: ElectronicInvoicePayload): Promise<IssueElectronicInvoiceResult>;
+    issueInvoice(payload: ElectronicInvoicePayload, credentials?: TenantBillingCredentials): Promise<IssueElectronicInvoiceResult>;
     getInvoiceStatus(providerInvoiceId: string): Promise<ElectronicInvoiceStatusResult>;
+    getRideUrl(accessKey: string): Promise<DocumentUrlResult>;
+    getXmlUrl(accessKey: string, type?: 'authorized' | 'signed' | 'unsigned'): Promise<DocumentUrlResult>;
 }
 
 export const ELECTRONIC_INVOICE_PROVIDER = Symbol('IElectronicInvoiceProvider');

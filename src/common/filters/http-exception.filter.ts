@@ -8,6 +8,17 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
+const STATUS_CODE_MAP: Record<number, string> = {
+    400: 'BAD_REQUEST',
+    401: 'UNAUTHORIZED',
+    403: 'FORBIDDEN',
+    404: 'NOT_FOUND',
+    409: 'CONFLICT',
+    422: 'UNPROCESSABLE_ENTITY',
+    429: 'TOO_MANY_REQUESTS',
+    500: 'INTERNAL_ERROR',
+};
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
     private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -23,18 +34,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
                 : HttpStatus.INTERNAL_SERVER_ERROR;
 
         let message = 'Internal server error';
-        let code = 'INTERNAL_ERROR';
+        let code = STATUS_CODE_MAP[status] || 'INTERNAL_ERROR';
         let details: unknown[] = [];
 
         if (exception instanceof HttpException) {
             const res = exception.getResponse();
             if (typeof res === 'string') {
                 message = res;
-                code = this.statusToCode(status);
+                code = STATUS_CODE_MAP[status] || 'UNKNOWN_ERROR';
             } else if (typeof res === 'object' && res !== null) {
                 const resObj = res as Record<string, unknown>;
                 message = (resObj.message as string) || message;
-                code = (resObj.code as string) || this.statusToCode(status);
+                code = (resObj.code as string) || STATUS_CODE_MAP[status] || 'UNKNOWN_ERROR';
                 details = Array.isArray(resObj.message)
                     ? (resObj.message as unknown[])
                     : [];
@@ -67,19 +78,5 @@ export class HttpExceptionFilter implements ExceptionFilter {
                 path: request.url,
             },
         });
-    }
-
-    private statusToCode(status: number): string {
-        const map: Record<number, string> = {
-            400: 'BAD_REQUEST',
-            401: 'UNAUTHORIZED',
-            403: 'FORBIDDEN',
-            404: 'NOT_FOUND',
-            409: 'CONFLICT',
-            422: 'UNPROCESSABLE_ENTITY',
-            429: 'TOO_MANY_REQUESTS',
-            500: 'INTERNAL_ERROR',
-        };
-        return map[status] || 'UNKNOWN_ERROR';
     }
 }

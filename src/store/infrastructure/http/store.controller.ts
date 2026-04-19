@@ -8,6 +8,7 @@ import { CreateProductDto, UpdateProductDto, CreateOrderDto, UpdateOrderStatusDt
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { HttpCache } from '../../../common/decorators/http-cache.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
@@ -19,6 +20,7 @@ export class StoreController {
 
     // ── Products ────────────────────────────────────────────────────────────────
     @Get('products')
+    @HttpCache(60)
     @Permissions(`${PermissionModule.STORE}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'List products catalog' })
     findAllProducts(@CurrentUser() user: JwtPayload, @Query() query: PaginationQueryDto, @Query('category') category?: string) {

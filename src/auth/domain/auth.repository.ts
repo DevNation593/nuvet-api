@@ -38,12 +38,32 @@ export interface UpdateUserProfileData {
     phone?: string;
 }
 
+export interface PasswordResetTokenRecord {
+    id: string;
+    userId: string;
+    token: string;
+    expiresAt: Date;
+    usedAt: Date | null;
+    user: UserWithTenant;
+}
+
+export interface EmailVerificationTokenRecord {
+    id: string;
+    userId: string;
+    token: string;
+    expiresAt: Date;
+    usedAt: Date | null;
+    user: UserWithTenant;
+}
+
 export interface IAuthRepository {
     findUsersByEmailActive(email: string, tenantSlug?: string): Promise<UserWithTenant[]>;
 
     findUserById(userId: string): Promise<UserWithTenant | null>;
 
     findUserByIdWithTenant(userId: string): Promise<UserWithTenant | null>;
+
+    findUserByEmail(email: string): Promise<UserWithTenant | null>;
 
     updateUser(userId: string, data: Record<string, unknown>): Promise<UserWithTenant>;
 
@@ -58,6 +78,20 @@ export interface IAuthRepository {
     countUserRefreshTokens(userId: string): Promise<number>;
 
     changePasswordAndInvalidateSessions(userId: string, passwordHash: string): Promise<void>;
+
+    createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
+
+    findPasswordResetToken(token: string): Promise<PasswordResetTokenRecord | null>;
+
+    markPasswordResetTokenUsed(id: string): Promise<void>;
+
+    createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<void>;
+
+    findEmailVerificationToken(token: string): Promise<EmailVerificationTokenRecord | null>;
+
+    markEmailVerificationTokenUsed(id: string): Promise<void>;
+
+    markEmailVerified(userId: string): Promise<void>;
 }
 
 export const AUTH_REPOSITORY = Symbol('IAuthRepository');

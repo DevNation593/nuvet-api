@@ -49,8 +49,11 @@ export class PrismaMedicalRecordRepository implements IMedicalRecordRepository {
     }
 
     async petExists(tenantId: string, petId: string): Promise<boolean> {
-        const count = await this.prisma.pet.count({ where: { id: petId, tenantId } });
-        return count > 0;
+        const pet = await this.prisma.pet.findFirst({
+            where: { id: petId, tenantId },
+            select: { id: true },
+        });
+        return Boolean(pet);
     }
 
     async findRecord(tenantId: string, id: string): Promise<{ id: string } | null> {
@@ -74,5 +77,35 @@ export class PrismaMedicalRecordRepository implements IMedicalRecordRepository {
 
     async createAttachment(data: CreateAttachmentData): Promise<unknown> {
         return this.prisma.medicalRecordAttachment.create({ data });
+    }
+
+    async findAttachmentsByRecord(
+        tenantId: string,
+        id: string,
+    ): Promise<
+        Array<{
+            id: string;
+            key: string;
+            filename: string;
+            contentType: string;
+            size: number;
+            createdAt: Date;
+        }>
+    > {
+        return this.prisma.medicalRecordAttachment.findMany({
+            where: {
+                tenantId,
+                medicalRecordId: id,
+            },
+            select: {
+                id: true,
+                key: true,
+                filename: true,
+                contentType: true,
+                size: true,
+                createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
     }
 }

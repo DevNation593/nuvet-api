@@ -6,11 +6,15 @@ import { JwtPayload, UserRole, PermissionModule, PermissionAction } from '@nuvet
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import {
     CreateNotificationTemplateDto,
+    GenerateClinicalRemindersDto,
     TriggerNotificationDto,
     UpdateNotificationTemplateDto,
 } from '../../application/dto/notifications.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
+import { RequireFeatureFlag } from '../../../common/feature-flags/feature-flag.decorator';
+import { FeatureFlagGuard } from '../../../common/feature-flags/feature-flag.guard';
+import { UseGuards } from '@nestjs/common';
 
 @ApiTags('notifications')
 @ApiBearerAuth('JWT')
@@ -95,5 +99,19 @@ export class NotificationsController {
     @ApiOperation({ summary: 'Trigger a notification template for a user' })
     trigger(@CurrentUser() user: JwtPayload, @Body() dto: TriggerNotificationDto) {
         return this.service.triggerTemplate(user.tenantId, dto);
+    }
+
+    @Post('reminders/clinical')
+    @UseGuards(FeatureFlagGuard)
+    @RequireFeatureFlag('clinical_reminders_manual_trigger')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.RECEPTIONIST)
+    @Permissions(`${PermissionModule.NOTIFICATIONS}:${PermissionAction.CREATE}`)
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Generate automatic reminders for appointments and vaccinations' })
+    generateClinicalReminders(
+        @CurrentUser() user: JwtPayload,
+        @Body() dto: GenerateClinicalRemindersDto,
+    ) {
+        return this.service.generateClinicalReminders(user.tenantId, dto);
     }
 }

@@ -11,7 +11,7 @@ import {
     CreateRefundData,
     TicketTotals,
 } from '../../domain/pos.repository';
-import { CashRegisterStatus, PosTicketStatus } from '@nuvet/types';
+import { CashRegisterStatus, PosTicketStatus, PaymentMethod } from '@nuvet/types';
 
 @Injectable()
 export class PrismaPosRepository implements IPosRepository {
@@ -84,6 +84,66 @@ export class PrismaPosRepository implements IPosRepository {
         return { data, total };
     }
 
+    async getRegisterFinancialSummary(
+        tenantId: string,
+        registerId: string,
+        openedAt: Date,
+        closedAt: Date,
+    ): Promise<{
+        ticketsCount: number;
+        byPaymentMethod: Record<string, { count: number; total: number }>;
+        refundsTotal: number;
+        salesTotal: number;
+        expectedCashBalance: number;
+    }> {
+        const ticketWhere = {
+            tenantId,
+            registerId,
+            createdAt: { gte: openedAt, lte: closedAt },
+        };
+
+        const [ticketAgg, paymentGroups, refundAgg] = await Promise.all([
+            this.prisma.posTicket.aggregate({
+                where: ticketWhere,
+                _count: true,
+                _sum: { total: true },
+            }),
+            this.prisma.posPayment.groupBy({
+                by: ['method'],
+                where: { ticket: ticketWhere },
+                _count: { _all: true },
+                _sum: { amount: true },
+            }),
+            this.prisma.posRefund.aggregate({
+                where: { ticket: ticketWhere },
+                _sum: { amount: true },
+            }),
+        ]);
+
+        const byPaymentMethod: Record<string, { count: number; total: number }> = {};
+        let cashSales = 0;
+        for (const group of paymentGroups) {
+            const method = String(group.method ?? 'OTHER');
+            byPaymentMethod[method] = {
+                count: group._count._all,
+                total: Number(group._sum.amount ?? 0),
+            };
+            if (method === 'CASH') {
+                cashSales = Number(group._sum.amount ?? 0);
+            }
+        }
+
+        const refundsTotal = Number(refundAgg._sum.amount ?? 0);
+
+        return {
+            ticketsCount: ticketAgg._count,
+            byPaymentMethod,
+            refundsTotal,
+            salesTotal: Number(ticketAgg._sum.total ?? 0),
+            expectedCashBalance: +(cashSales - refundsTotal).toFixed(2),
+        };
+    }
+
     async closeRegister(id: string, data: CloseRegisterData): Promise<unknown> {
         return this.prisma.cashRegister.update({
             where: { id },
@@ -137,20 +197,61 @@ export class PrismaPosRepository implements IPosRepository {
         });
     }
 
+    async findTicketSnapshot(
+        tenantId: string,
+        id: string,
+    ): Promise<{ id: string; status: PosTicketStatus; total: number; itemsCount: number } | null> {
+        const ticket = await this.prisma.posTicket.findFirst({
+            where: { id, tenantId },
+            select: {
+                id: true,
+                status: true,
+                total: true,
+                _count: {
+                    select: {
+                        items: true,
+                    },
+                },
+            },
+        });
+
+        if (!ticket) return null;
+
+        return {
+            id: ticket.id,
+            status: ticket.status as PosTicketStatus,
+            total: Number(ticket.total ?? 0),
+            itemsCount: ticket._count.items,
+        };
+    }
+
     async findAllTickets(
         tenantId: string,
         filter: TicketFilterParams,
         skip: number,
         take: number,
     ): Promise<{ data: unknown[]; total: number }> {
+        const parseFromDate = (value: string) => {
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+        };
+
+        const parseToDate = (value: string) => {
+            const normalized = value.includes('T') ? value : `${value}T23:59:59.999Z`;
+            const parsed = new Date(normalized);
+            return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+        };
+
         const where: Record<string, unknown> = { tenantId };
         if (filter.status) where.status = filter.status;
         if (filter.clientId) where.clientId = filter.clientId;
         if (filter.registerId) where.registerId = filter.registerId;
         if (filter.dateFrom || filter.dateTo) {
+            const fromDate = filter.dateFrom ? parseFromDate(filter.dateFrom) : undefined;
+            const toDate = filter.dateTo ? parseToDate(filter.dateTo) : undefined;
             where.createdAt = {
-                ...(filter.dateFrom ? { gte: new Date(filter.dateFrom) } : {}),
-                ...(filter.dateTo ? { lte: new Date(filter.dateTo + 'T23:59:59.999Z') } : {}),
+                ...(fromDate ? { gte: fromDate } : {}),
+                ...(toDate ? { lte: toDate } : {}),
             };
         }
 
@@ -170,6 +271,49 @@ export class PrismaPosRepository implements IPosRepository {
             this.prisma.posTicket.count({ where }),
         ]);
         return { data, total };
+    }
+
+    async getDailyTicketSummary(tenantId: string, start: Date, end: Date): Promise<{
+        totalTransactions: number;
+        totalRevenue: number;
+        totalDiscount: number;
+        byPaymentMethod: Array<{ method: PaymentMethod; count: number; total: number }>;
+    }> {
+        const ticketWhere = {
+            tenantId,
+            status: PosTicketStatus.COMPLETED as any,
+            createdAt: {
+                gte: start,
+                lte: end,
+            },
+        };
+
+        const [ticketAgg, paymentGroups] = await Promise.all([
+            this.prisma.posTicket.aggregate({
+                where: ticketWhere,
+                _count: { _all: true },
+                _sum: { total: true, discount: true },
+            }),
+            this.prisma.posPayment.groupBy({
+                by: ['method'],
+                where: {
+                    ticket: ticketWhere,
+                },
+                _count: { _all: true },
+                _sum: { amount: true },
+            }),
+        ]);
+
+        return {
+            totalTransactions: ticketAgg._count._all,
+            totalRevenue: Number(ticketAgg._sum.total ?? 0),
+            totalDiscount: Number(ticketAgg._sum.discount ?? 0),
+            byPaymentMethod: paymentGroups.map((group) => ({
+                method: group.method as PaymentMethod,
+                count: group._count._all,
+                total: Number(group._sum.amount ?? 0),
+            })),
+        };
     }
 
     async updateTicketStatus(id: string, status: PosTicketStatus): Promise<unknown> {
@@ -208,6 +352,22 @@ export class PrismaPosRepository implements IPosRepository {
         });
     }
 
+    async addItems(data: AddItemData[]): Promise<void> {
+        if (!data.length) return;
+        await this.prisma.posTicketItem.createMany({
+            data: data.map((item) => ({
+                ticketId: item.ticketId,
+                type: item.type as any,
+                productId: item.productId,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                discountAmount: item.discountAmount,
+                total: item.total,
+            })),
+        });
+    }
+
     async removeItem(ticketId: string, itemId: string): Promise<void> {
         await this.prisma.posTicketItem.delete({
             where: { id: itemId, ticketId },
@@ -215,7 +375,10 @@ export class PrismaPosRepository implements IPosRepository {
     }
 
     async findTicketItems(ticketId: string): Promise<unknown[]> {
-        return this.prisma.posTicketItem.findMany({ where: { ticketId } });
+        return this.prisma.posTicketItem.findMany({
+            where: { ticketId },
+            select: { id: true, unitPrice: true, quantity: true, discountAmount: true, total: true },
+        });
     }
 
     // ── Payments ──────────────────────────────────────────────────────────────
@@ -228,6 +391,18 @@ export class PrismaPosRepository implements IPosRepository {
                 amount: data.amount,
                 reference: data.reference,
             },
+        });
+    }
+
+    async addPayments(data: AddPaymentData[]): Promise<void> {
+        if (!data.length) return;
+        await this.prisma.posPayment.createMany({
+            data: data.map((p) => ({
+                ticketId: p.ticketId,
+                method: p.method as any,
+                amount: p.amount,
+                reference: p.reference,
+            })),
         });
     }
 

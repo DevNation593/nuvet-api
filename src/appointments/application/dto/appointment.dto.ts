@@ -5,6 +5,7 @@ import {
     IsString,
     IsDateString,
     IsInt,
+    IsUUID,
     Min,
     Max,
     MaxLength,
@@ -18,16 +19,13 @@ export class CreateAppointmentDto {
     @ApiProperty({ description: 'Pet ID' })
     @IsString()
     @IsNotEmpty()
-    petId: string;
-
+    petId!: string;
     @ApiProperty({ enum: AppointmentType, example: AppointmentType.CONSULTATION })
     @IsEnum(AppointmentType)
-    type: AppointmentType;
-
+    type!: AppointmentType;
     @ApiProperty({ example: '2026-03-01T10:00:00.000Z' })
     @IsDateString()
-    scheduledAt: string;
-
+    scheduledAt!: string;
     @ApiPropertyOptional({ example: 30, default: 30, minimum: 15, maximum: 240 })
     @IsOptional()
     @Type(() => Number)
@@ -45,6 +43,11 @@ export class CreateAppointmentDto {
     @IsOptional()
     @IsString()
     groomerId?: string;
+
+    @ApiPropertyOptional({ description: 'Branch ID for multi-branch tenants' })
+    @IsOptional()
+    @IsUUID()
+    branchId?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
@@ -94,6 +97,11 @@ export class AppointmentFilterDto {
     @IsOptional()
     @IsDateString()
     dateTo?: string;
+
+    @ApiPropertyOptional({ description: 'Filter by branch' })
+    @IsOptional()
+    @IsUUID()
+    branchId?: string;
 }
 
 export class AppointmentListQueryDto extends PaginationQueryDto {
@@ -126,6 +134,11 @@ export class AppointmentListQueryDto extends PaginationQueryDto {
     @IsOptional()
     @IsDateString()
     dateTo?: string;
+
+    @ApiPropertyOptional({ description: 'Filter by branch' })
+    @IsOptional()
+    @IsUUID()
+    branchId?: string;
 }
 
 export class CancelAppointmentDto {
@@ -135,3 +148,4 @@ export class CancelAppointmentDto {
     @MaxLength(500)
     reason?: string;
 }
+
