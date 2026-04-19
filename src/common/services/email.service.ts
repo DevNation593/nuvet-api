@@ -30,7 +30,7 @@ export class EmailService {
         const resetUrl = `${this.appUrl}/auth/reset-password?token=${token}`;
         await this.send({
             to: email,
-            subject: 'NuVet - Restablecer contraseña',
+            subject: 'NuVet Tech - Restablecer contraseña',
             html: `
                 <h2>Restablecer contraseña</h2>
                 <p>Recibimos una solicitud para restablecer tu contraseña.</p>
@@ -45,10 +45,10 @@ export class EmailService {
         const verifyUrl = `${this.appUrl}/auth/verify-email?token=${token}`;
         await this.send({
             to: email,
-            subject: 'NuVet - Verifica tu correo electrónico',
+            subject: 'NuVet Tech - Verifica tu correo electrónico',
             html: `
                 <h2>Verificar correo electrónico</h2>
-                <p>Gracias por registrarte en NuVet. Verifica tu correo para activar tu cuenta.</p>
+                <p>Gracias por registrarte en NuVet Tech. Verifica tu correo para activar tu cuenta.</p>
                 <p><a href="${verifyUrl}" style="padding:10px 20px;background:#059669;color:white;border-radius:8px;text-decoration:none;display:inline-block;">Verificar correo</a></p>
                 <p>Si no creaste una cuenta, ignora este correo. El enlace expira en 24 horas.</p>
                 <p style="color:#999;font-size:12px;">URL directa: ${verifyUrl}</p>

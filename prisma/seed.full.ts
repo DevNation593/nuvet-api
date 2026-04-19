@@ -133,7 +133,7 @@ async function seedFullTenant() {
     // Tenant
     const tenant = await prisma.tenant.create({
         data: {
-            name: 'Clínica Veterinaria NuVet',
+            name: 'Clínica Veterinaria NuVet Tech',
             slug: 'nuvet-clinic',
             plan: TenantPlan.PRO,
             email: 'admin@nuvet-clinic.com',
