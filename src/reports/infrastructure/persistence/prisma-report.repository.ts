@@ -89,16 +89,11 @@ export class PrismaReportRepository implements IReportRepository {
     }
 
     async getInventoryReport(tenantId: string): Promise<InventoryReportResult> {
-        const [totalProducts, lowStockAlerts, movements] = await Promise.all([
+        const [totalProducts, allProducts, movements] = await Promise.all([
             this.prisma.product.count({ where: { tenantId, isActive: true } }),
             this.prisma.product.findMany({
-                where: {
-                    tenantId,
-                    isActive: true,
-                    stock: { lte: this.prisma.product.fields.lowStockThreshold },
-                } as any,
+                where: { tenantId, isActive: true },
                 orderBy: [{ stock: 'asc' }, { updatedAt: 'asc' }],
-                take: 100,
                 select: {
                     id: true,
                     name: true,
@@ -114,6 +109,10 @@ export class PrismaReportRepository implements IReportRepository {
                 include: { product: { select: { name: true, sku: true } } },
             }),
         ]);
+
+        const lowStockAlerts = allProducts
+            .filter((p) => p.stock <= p.lowStockThreshold)
+            .slice(0, 100);
 
         return {
             totalProducts,
@@ -394,12 +393,8 @@ export class PrismaReportRepository implements IReportRepository {
         tenantId: string,
         lookbackDays: number,
     ): Promise<RestockSuggestionsResult> {
-        const lowStockProducts = await this.prisma.product.findMany({
-            where: {
-                tenantId,
-                isActive: true,
-                stock: { lte: this.prisma.product.fields.lowStockThreshold },
-            } as any,
+        const allActiveProducts = await this.prisma.product.findMany({
+            where: { tenantId, isActive: true },
             select: {
                 id: true,
                 name: true,
@@ -409,8 +404,11 @@ export class PrismaReportRepository implements IReportRepository {
                 lowStockThreshold: true,
             },
             orderBy: { stock: 'asc' },
-            take: 100,
         });
+
+        const lowStockProducts = allActiveProducts
+            .filter((p) => p.stock <= p.lowStockThreshold)
+            .slice(0, 100);
 
         const fromDate = new Date();
         fromDate.setDate(fromDate.getDate() - lookbackDays);

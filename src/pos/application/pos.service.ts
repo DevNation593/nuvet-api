@@ -421,12 +421,23 @@ export class PosService {
             notes: dto.notes,
         })) as { id: string };
 
+        const productIds = dto.items
+            .map((i) => i.productId)
+            .filter(Boolean) as string[];
+        const productMap = new Map<string, string>();
+        if (productIds.length > 0) {
+            const products = await this.posRepo.findProductsByIds(tenantId, productIds);
+            for (const p of products) {
+                productMap.set(p.id, p.name);
+            }
+        }
+
         await this.posRepo.addItems(
             dto.items.map((item) => ({
                 ticketId: ticket.id,
                 type: PosItemType.PRODUCT,
                 productId: item.productId,
-                description: 'PRODUCT',
+                description: productMap.get(item.productId) || item.productId,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
                 discountAmount: 0,

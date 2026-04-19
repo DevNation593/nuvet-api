@@ -158,6 +158,8 @@ export interface IPosRepository {
         price: number;
         stock: number;
     } | null>;
+
+    findProductsByIds(tenantId: string, ids: string[]): Promise<Array<{ id: string; name: string }>>;
 }
 
 export const POS_REPOSITORY = Symbol('IPosRepository');
