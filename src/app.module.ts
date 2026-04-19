@@ -39,14 +39,13 @@ import { billingConfig } from './config/billing.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
 import { redisConfig } from './config/redis.config';
-import { s3Config } from './config/s3.config';
 
 @Module({
     imports: [
         // ── Config ──────────────────────────────────────────────────────────────
         ConfigModule.forRoot({
             isGlobal: true,
-            load: [appConfig, databaseConfig, jwtConfig, redisConfig, s3Config, billingConfig],
+            load: [appConfig, databaseConfig, jwtConfig, redisConfig, billingConfig],
             envFilePath: ['.env.local', '.env'],
         }),
 
