@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsIn, IsOptional, IsString, Length, MaxLength, MinLength } from 'class-validator';
 import { ValidateNested } from 'class-validator';
+import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
 export class InvoiceBuyerDto {
     @ApiProperty({ example: 'Cliente de Mostrador' })
@@ -65,4 +66,31 @@ export class IssuePosTicketInvoiceDto {
     @IsOptional()
     @IsBoolean()
     asyncEmission?: boolean;
+
+    @ApiPropertyOptional({ example: '2026-04-17', description: 'Fecha de emisión YYYY-MM-DD. No puede ser futura. Default: fecha actual.' })
+    @IsOptional()
+    @IsDateString()
+    issueDate?: string;
+}
+
+export class InvoiceListFilterDto extends PaginationQueryDto {
+    @ApiPropertyOptional({ description: 'Filtrar por estado de factura (AUTHORIZED, PENDING, REJECTED, etc.)' })
+    @IsOptional()
+    @IsString()
+    invoiceStatus?: string;
+
+    @ApiPropertyOptional({ description: 'Fecha desde (YYYY-MM-DD)' })
+    @IsOptional()
+    @IsDateString()
+    dateFrom?: string;
+
+    @ApiPropertyOptional({ description: 'Fecha hasta (YYYY-MM-DD)' })
+    @IsOptional()
+    @IsDateString()
+    dateTo?: string;
+
+    @ApiPropertyOptional({ description: 'Búsqueda por número de factura, clave de acceso, o datos del cliente' })
+    @IsOptional()
+    @IsString()
+    search?: string;
 }

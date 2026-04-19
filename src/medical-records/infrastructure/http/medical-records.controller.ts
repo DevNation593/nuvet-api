@@ -6,7 +6,12 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { MedicalRecordsService } from '../../application/medical-records.service';
-import { CreateMedicalRecordDto, UpdateMedicalRecordDto, RegisterAttachmentDto } from '../../application/dto/medical-record.dto';
+import {
+    CreateMedicalRecordDto,
+    UpdateMedicalRecordDto,
+    RegisterAttachmentDto,
+    RegisterClinicalDocumentDto,
+} from '../../application/dto/medical-record.dto';
 
 @ApiTags('medical-records')
 @ApiBearerAuth('JWT')
@@ -54,6 +59,25 @@ export class MedicalRecordsController {
         @Body() dto: RegisterAttachmentDto,
     ) {
         return this.service.registerAttachment(user.tenantId, user.sub, id, dto);
+    }
+
+    @Get(':id/clinical-documents')
+    @Permissions(`${PermissionModule.MEDICAL_RECORDS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'List versioned clinical documents with signature metadata' })
+    listClinicalDocuments(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+        return this.service.getClinicalDocumentVersions(user.tenantId, id);
+    }
+
+    @Post(':id/clinical-documents')
+    @Permissions(`${PermissionModule.FILES}:${PermissionAction.CREATE}`)
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Register a signed/versioned clinical document attachment' })
+    registerClinicalDocument(
+        @CurrentUser() user: JwtPayload,
+        @Param('id') id: string,
+        @Body() dto: RegisterClinicalDocumentDto,
+    ) {
+        return this.service.registerClinicalDocument(user.tenantId, user.sub, id, dto);
     }
 }
 

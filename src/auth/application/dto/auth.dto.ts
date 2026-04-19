@@ -15,24 +15,20 @@ export class RegisterDto {
     @IsString()
     @IsNotEmpty()
     @MaxLength(100)
-    clinicName: string;
-
+    clinicName!: string;
     @ApiProperty({ example: 'John' })
     @IsString()
     @IsNotEmpty()
     @MaxLength(50)
-    firstName: string;
-
+    firstName!: string;
     @ApiProperty({ example: 'Doe' })
     @IsString()
     @IsNotEmpty()
     @MaxLength(50)
-    lastName: string;
-
+    lastName!: string;
     @ApiProperty({ example: 'owner@happypaws.com' })
     @IsEmail()
-    email: string;
-
+    email!: string;
     @ApiProperty({ example: 'SecurePass123!', minLength: 8 })
     @IsString()
     @MinLength(8)
@@ -41,8 +37,7 @@ export class RegisterDto {
         message:
             'Password must have uppercase, lowercase and a number or special character',
     })
-    password: string;
-
+    password!: string;
     @ApiPropertyOptional({ example: '+1234567890' })
     @IsOptional()
     @IsString()
@@ -52,8 +47,7 @@ export class RegisterDto {
 export class LoginDto {
     @ApiProperty({ example: 'owner@happypaws.com' })
     @IsEmail()
-    email: string;
-
+    email!: string;
     @ApiPropertyOptional({ example: 'demo-pro' })
     @IsOptional()
     @IsString()
@@ -66,22 +60,21 @@ export class LoginDto {
     @ApiProperty({ example: 'SecurePass123!' })
     @IsString()
     @IsNotEmpty()
-    password: string;
+    password!: string;
 }
 
 export class RefreshTokenDto {
     @ApiProperty()
     @IsString()
     @IsNotEmpty()
-    refreshToken: string;
+    refreshToken!: string;
 }
 
 export class ChangePasswordDto {
     @ApiProperty()
     @IsString()
     @IsNotEmpty()
-    currentPassword: string;
-
+    currentPassword!: string;
     @ApiProperty({ minLength: 8 })
     @IsString()
     @MinLength(8)
@@ -89,7 +82,37 @@ export class ChangePasswordDto {
     @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
         message: 'Password must have uppercase, lowercase and a number or special character',
     })
-    newPassword: string;
+    newPassword!: string;
+}
+
+export class ForgotPasswordDto {
+    @ApiProperty({ example: 'owner@happypaws.com' })
+    @IsEmail()
+    email!: string;
+}
+
+export class ResetPasswordDto {
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    token!: string;
+
+    @ApiProperty({ minLength: 8 })
+    @IsString()
+    @MinLength(8)
+    @MaxLength(64)
+    @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+        message:
+            'Password must have uppercase, lowercase and a number or special character',
+    })
+    newPassword!: string;
+}
+
+export class VerifyEmailDto {
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    token!: string;
 }
 
 export class UpdateProfileDto {
@@ -111,3 +134,4 @@ export class UpdateProfileDto {
     @MaxLength(30)
     phone?: string;
 }
+

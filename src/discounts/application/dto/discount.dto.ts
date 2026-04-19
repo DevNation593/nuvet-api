@@ -10,8 +10,7 @@ export class CreateDiscountDto {
     @ApiProperty({ example: 'Descuento de verano' })
     @IsString()
     @IsNotEmpty()
-    name: string;
-
+    name!: string;
     @ApiPropertyOptional({ example: '20% de descuento en todos los juguetes' })
     @IsOptional()
     @IsString()
@@ -19,8 +18,7 @@ export class CreateDiscountDto {
 
     @ApiProperty({ enum: DiscountType, example: DiscountType.PERCENTAGE })
     @IsEnum(DiscountType)
-    type: DiscountType;
-
+    type!: DiscountType;
     @ApiPropertyOptional({
         example: 20,
         description: 'Porcentaje (0-100) si type=PERCENTAGE, o monto fijo si type=FIXED. No aplica para BUY_X_GET_Y.',
@@ -53,8 +51,7 @@ export class CreateDiscountDto {
 
     @ApiProperty({ enum: DiscountTargetType, example: DiscountTargetType.PRODUCT_CATEGORY })
     @IsEnum(DiscountTargetType)
-    targetType: DiscountTargetType;
-
+    targetType!: DiscountTargetType;
     @ApiPropertyOptional({
         example: 'prod_uuid_here',
         description: 'ID del producto cuando targetType = PRODUCT',
@@ -98,8 +95,7 @@ export class CreateDiscountDto {
         description: 'Fecha/hora de activación del descuento',
     })
     @IsDateString()
-    startAt: string;
-
+    startAt!: string;
     @ApiPropertyOptional({
         example: '2026-03-31T23:59:59.000Z',
         description: 'Fecha/hora de expiración. null = sin expiración',
@@ -120,11 +116,11 @@ export class ApplyDiscountDto {
     @ApiProperty({ description: 'ID del descuento a simular/aplicar' })
     @IsString()
     @IsNotEmpty()
-    discountId: string;
-
+    discountId!: string;
     @ApiProperty({ example: 150, description: 'Monto total sobre el que aplicar el descuento' })
     @Type(() => Number)
     @IsNumber()
     @IsPositive()
-    amount: number;
+    amount!: number;
 }
+

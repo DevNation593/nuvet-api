@@ -44,6 +44,26 @@ export interface TicketTotals {
     total: number;
 }
 
+export interface TicketSnapshot {
+    id: string;
+    status: PosTicketStatus;
+    total: number;
+    itemsCount: number;
+}
+
+export interface DailyPaymentMethodSummary {
+    method: PaymentMethod;
+    count: number;
+    total: number;
+}
+
+export interface DailyTicketSummary {
+    totalTransactions: number;
+    totalRevenue: number;
+    totalDiscount: number;
+    byPaymentMethod: DailyPaymentMethodSummary[];
+}
+
 // ── Items ─────────────────────────────────────────────────────────────────────
 
 export interface AddItemData {
@@ -88,27 +108,43 @@ export interface IPosRepository {
         skip: number,
         take: number,
     ): Promise<{ data: unknown[]; total: number }>;
+    getRegisterFinancialSummary(
+        tenantId: string,
+        registerId: string,
+        openedAt: Date,
+        closedAt: Date,
+    ): Promise<{
+        ticketsCount: number;
+        byPaymentMethod: Record<string, { count: number; total: number }>;
+        refundsTotal: number;
+        salesTotal: number;
+        expectedCashBalance: number;
+    }>;
     closeRegister(id: string, data: CloseRegisterData): Promise<unknown>;
 
     // Tickets
     createTicket(data: CreateTicketData): Promise<unknown>;
     findTicketById(tenantId: string, id: string): Promise<unknown | null>;
+    findTicketSnapshot(tenantId: string, id: string): Promise<TicketSnapshot | null>;
     findAllTickets(
         tenantId: string,
         filter: TicketFilterParams,
         skip: number,
         take: number,
     ): Promise<{ data: unknown[]; total: number }>;
+    getDailyTicketSummary(tenantId: string, start: Date, end: Date): Promise<DailyTicketSummary>;
     updateTicketStatus(id: string, status: PosTicketStatus): Promise<unknown>;
     updateTicketTotals(id: string, totals: TicketTotals): Promise<unknown>;
 
     // Items
     addItem(data: AddItemData): Promise<unknown>;
+    addItems(data: AddItemData[]): Promise<void>;
     removeItem(ticketId: string, itemId: string): Promise<void>;
     findTicketItems(ticketId: string): Promise<unknown[]>;
 
     // Payments
     addPayment(data: AddPaymentData): Promise<unknown>;
+    addPayments(data: AddPaymentData[]): Promise<void>;
     findTicketPayments(ticketId: string): Promise<Array<{ amount: number; method: string }>>;
 
     // Refunds

@@ -10,29 +10,26 @@ import {
     MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { PetSpecies, PetSex } from '@nuvet/types';
+import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
 export class CreatePetDto {
     @ApiProperty({ example: 'Buddy' })
     @IsString()
     @IsNotEmpty()
     @MaxLength(50)
-    name: string;
-
+    name!: string;
     @ApiProperty({ enum: PetSpecies, example: PetSpecies.DOG })
     @IsEnum(PetSpecies)
-    species: PetSpecies;
-
+    species!: PetSpecies;
     @ApiProperty({ enum: PetSex, example: PetSex.MALE })
     @IsEnum(PetSex)
-    sex: PetSex;
-
+    sex!: PetSex;
     @ApiProperty({ description: 'Owner user ID' })
     @IsString()
     @IsNotEmpty()
-    ownerId: string;
-
+    ownerId!: string;
     @ApiPropertyOptional({ example: 'Golden Retriever' })
     @IsOptional()
     @IsString()
@@ -78,3 +75,15 @@ export class CreatePetDto {
 }
 
 export class UpdatePetDto extends PartialType(CreatePetDto) { }
+
+export class PetsListQueryDto extends PaginationQueryDto {
+    @ApiPropertyOptional({
+        description: 'Include inactive pets in results (admin/staff only)',
+        default: false,
+    })
+    @IsOptional()
+    @Transform(({ value }) => value === true || value === 'true')
+    @IsBoolean()
+    includeInactive?: boolean = false;
+}
+

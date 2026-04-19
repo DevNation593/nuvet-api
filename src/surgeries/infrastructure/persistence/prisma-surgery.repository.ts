@@ -45,8 +45,11 @@ export class PrismaSurgeryRepository implements ISurgeryRepository {
     }
 
     async petExists(tenantId: string, petId: string): Promise<boolean> {
-        const count = await this.prisma.pet.count({ where: { id: petId, tenantId } });
-        return count > 0;
+        const pet = await this.prisma.pet.findFirst({
+            where: { id: petId, tenantId },
+            select: { id: true },
+        });
+        return Boolean(pet);
     }
 
     async create(data: CreateSurgeryData): Promise<unknown> {
@@ -54,9 +57,12 @@ export class PrismaSurgeryRepository implements ISurgeryRepository {
     }
 
     async update(
+        tenantId: string,
         id: string,
         data: Partial<Omit<CreateSurgeryData, 'tenantId' | 'petId' | 'vetId' | 'type'>>,
     ): Promise<unknown> {
+        const existing = await this.prisma.surgery.findFirst({ where: { id, tenantId }, select: { id: true } });
+        if (!existing) return null;
         return this.prisma.surgery.update({ where: { id }, data: data as any });
     }
 }

@@ -24,12 +24,26 @@ export interface PetWithDetails extends PetEntity {
 }
 
 export interface IPetRepository {
-    findAll(tenantId: string, query: { skip: number; take: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }, ownerId?: string): Promise<{ data: PetWithDetails[]; total: number }>;
+    findAll(
+        tenantId: string,
+        query: { skip: number; take: number; sortBy?: string; sortOrder?: 'asc' | 'desc' },
+        ownerId?: string,
+        includeInactive?: boolean,
+    ): Promise<{ data: PetWithDetails[]; total: number }>;
     findOne(tenantId: string, id: string, ownerId?: string): Promise<PetWithDetails | null>;
     findOwner(tenantId: string, ownerId: string): Promise<{ id: string } | null>;
     create(data: CreatePetData): Promise<PetEntity>;
     update(id: string, data: Partial<CreatePetData>): Promise<PetEntity>;
     softDelete(id: string): Promise<void>;
+    reactivate(id: string): Promise<void>;
+    getClinicalHistory(tenantId: string, id: string): Promise<ClinicalHistory | null>;
+}
+
+export interface ClinicalHistory {
+    pet: PetWithDetails;
+    medicalRecords: unknown[];
+    vaccinations: unknown[];
+    surgeries: unknown[];
 }
 
 export const PET_REPOSITORY = Symbol('IPetRepository');

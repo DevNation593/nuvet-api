@@ -74,6 +74,13 @@ export class PosController {
         return this.posService.findAllRegisters(user.tenantId, query);
     }
 
+    @Get('registers/:id/closure-report')
+    @Permissions(`${PermissionModule.POS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Get closure report for a closed cash register' })
+    getRegisterClosureReport(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+        return this.posService.getRegisterClosureReport(user.tenantId, id);
+    }
+
     // ── Tickets ───────────────────────────────────────────────────────────────
 
     @Post('tickets')
@@ -89,10 +96,9 @@ export class PosController {
     @ApiOperation({ summary: 'List POS tickets' })
     findAllTickets(
         @CurrentUser() user: JwtPayload,
-        @Query() query: PaginationQueryDto,
         @Query() filter: TicketFilterDto,
     ) {
-        return this.posService.findAllTickets(user.tenantId, query, filter);
+        return this.posService.findAllTickets(user.tenantId, filter, filter);
     }
 
     @Get('tickets/:id')
@@ -172,10 +178,9 @@ export class PosController {
     @ApiOperation({ summary: 'List POS transactions (legacy compatibility)' })
     findLegacyTransactions(
         @CurrentUser() user: JwtPayload,
-        @Query() query: PaginationQueryDto,
         @Query() filter: TicketFilterDto,
     ) {
-        return this.posService.findLegacyTransactions(user.tenantId, query, filter);
+        return this.posService.findLegacyTransactions(user.tenantId, filter, filter);
     }
 
     @Get('summary/daily')
@@ -183,6 +188,13 @@ export class PosController {
     @ApiOperation({ summary: 'Get daily POS summary (legacy compatibility)' })
     getLegacyDailySummary(@CurrentUser() user: JwtPayload, @Query('date') date?: string) {
         return this.posService.getLegacyDailySummary(user.tenantId, date);
+    }
+
+    @Get('discounts')
+    @Permissions(`${PermissionModule.POS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Listar descuentos activos disponibles para POS' })
+    getPosDiscounts(@CurrentUser() user: JwtPayload) {
+        return this.posService.findAvailableDiscounts(user.tenantId);
     }
 
     @Post('transactions')

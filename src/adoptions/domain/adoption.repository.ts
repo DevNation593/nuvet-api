@@ -26,7 +26,7 @@ export interface IAdoptionRepository {
     findOne(tenantId: string, id: string): Promise<unknown | null>;
     petExists(tenantId: string, petId: string): Promise<boolean>;
     create(data: CreateAdoptionData): Promise<unknown>;
-    update(id: string, data: Partial<UpdateAdoptionApplicationData>): Promise<unknown>;
+    update(tenantId: string, id: string, data: Partial<UpdateAdoptionApplicationData>): Promise<unknown>;
 }
 
 export const ADOPTION_REPOSITORY = Symbol('IAdoptionRepository');

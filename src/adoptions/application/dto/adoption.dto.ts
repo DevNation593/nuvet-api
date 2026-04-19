@@ -6,8 +6,7 @@ export class CreateAdoptionDto {
     @ApiProperty({ description: 'Pet to put up for adoption' })
     @IsString()
     @IsNotEmpty()
-    petId: string;
-
+    petId!: string;
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
@@ -15,8 +14,8 @@ export class CreateAdoptionDto {
 }
 
 export class ApplyAdoptionDto {
-    @ApiProperty() @IsString() @IsNotEmpty() applicantName: string;
-    @ApiProperty() @IsEmail() applicantEmail: string;
+    @ApiProperty() @IsString() @IsNotEmpty() applicantName!: string;
+    @ApiProperty() @IsEmail() applicantEmail!: string;
     @ApiPropertyOptional() @IsOptional() @IsString() applicantPhone?: string;
     @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
 }
@@ -24,7 +23,7 @@ export class ApplyAdoptionDto {
 export class UpdateAdoptionStatusDto {
     @ApiProperty({ enum: [AdoptionStatus.APPROVED, AdoptionStatus.REJECTED] })
     @IsIn([AdoptionStatus.APPROVED, AdoptionStatus.REJECTED])
-    status: AdoptionStatus;
-
+    status!: AdoptionStatus;
     @ApiPropertyOptional() @IsOptional() @IsString() rejectionReason?: string;
 }
+

@@ -36,8 +36,11 @@ export class PrismaAdoptionRepository implements IAdoptionRepository {
     }
 
     async petExists(tenantId: string, petId: string): Promise<boolean> {
-        const count = await this.prisma.pet.count({ where: { id: petId, tenantId } });
-        return count > 0;
+        const pet = await this.prisma.pet.findFirst({
+            where: { id: petId, tenantId },
+            select: { id: true },
+        });
+        return Boolean(pet);
     }
 
     async create(data: CreateAdoptionData): Promise<unknown> {
@@ -47,7 +50,9 @@ export class PrismaAdoptionRepository implements IAdoptionRepository {
         });
     }
 
-    async update(id: string, data: Partial<UpdateAdoptionApplicationData>): Promise<unknown> {
+    async update(tenantId: string, id: string, data: Partial<UpdateAdoptionApplicationData>): Promise<unknown> {
+        const existing = await this.prisma.adoption.findFirst({ where: { id, tenantId }, select: { id: true } });
+        if (!existing) return null;
         return this.prisma.adoption.update({ where: { id }, data });
     }
 }

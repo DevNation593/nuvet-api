@@ -50,11 +50,15 @@ export class PrismaStoreRepository implements IStoreRepository {
         return this.prisma.product.create({ data: data as any });
     }
 
-    async updateProduct(id: string, data: Record<string, unknown>): Promise<unknown> {
+    async updateProduct(tenantId: string, id: string, data: Record<string, unknown>): Promise<unknown> {
+        const existing = await this.prisma.product.findFirst({ where: { id, tenantId }, select: { id: true } });
+        if (!existing) return null;
         return this.prisma.product.update({ where: { id }, data: data as any });
     }
 
-    async deactivateProduct(id: string): Promise<unknown> {
+    async deactivateProduct(tenantId: string, id: string): Promise<unknown> {
+        const existing = await this.prisma.product.findFirst({ where: { id, tenantId }, select: { id: true } });
+        if (!existing) return null;
         return this.prisma.product.update({ where: { id }, data: { isActive: false } });
     }
 
@@ -80,12 +84,14 @@ export class PrismaStoreRepository implements IStoreRepository {
 
     async getLowStockProducts(tenantId: string): Promise<ProductData[]> {
         const products = await this.prisma.product.findMany({
-            where: { tenantId, isActive: true },
-            orderBy: { stock: 'asc' },
+            where: {
+                tenantId,
+                isActive: true,
+                stock: { lte: this.prisma.product.fields.lowStockThreshold },
+            } as any,
+            orderBy: [{ stock: 'asc' }, { updatedAt: 'asc' }],
         });
-        return (products as unknown as ProductData[]).filter(
-            (p) => p.stock <= p.lowStockThreshold,
-        );
+        return products as unknown as ProductData[];
     }
 
     async findAllOrders(
@@ -139,6 +145,20 @@ export class PrismaStoreRepository implements IStoreRepository {
         discountIdsToIncrement: string[],
     ): Promise<unknown> {
         return this.prisma.$transaction(async (tx) => {
+            const productIds = [...new Set(data.items.map((i) => i.productId))];
+            const products = await tx.product.findMany({
+                where: { id: { in: productIds } },
+                select: { id: true, stock: true, name: true },
+            });
+            const productMap = new Map(products.map((p) => [p.id, p]));
+
+            for (const item of data.items) {
+                const product = productMap.get(item.productId);
+                if (!product || product.stock < item.quantity) {
+                    throw new Error(`Insufficient stock for product: ${product?.name ?? item.productId}`);
+                }
+            }
+
             const order = await tx.order.create({
                 data: {
                     tenantId: data.tenantId,
@@ -161,18 +181,22 @@ export class PrismaStoreRepository implements IStoreRepository {
                 });
             }
 
-            for (const item of data.items) {
-                await tx.product.update({
-                    where: { id: item.productId },
-                    data: { stock: { decrement: item.quantity } },
-                });
-            }
+            await Promise.all(
+                data.items.map((item) =>
+                    tx.product.update({
+                        where: { id: item.productId },
+                        data: { stock: { decrement: item.quantity } },
+                    }),
+                ),
+            );
 
             return order;
         });
     }
 
     async updateOrderStatus(tenantId: string, id: string, status: OrderStatus): Promise<unknown> {
+        const existing = await this.prisma.order.findFirst({ where: { id, tenantId }, select: { id: true } });
+        if (!existing) return null;
         return this.prisma.order.update({
             where: { id },
             data: { status: status as any },

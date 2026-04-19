@@ -7,9 +7,9 @@ import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { IsNotEmpty, IsString } from 'class-validator';
 
 export class PresignUploadDto {
-    @ApiProperty() @IsString() @IsNotEmpty() filename: string;
-    @ApiProperty() @IsString() @IsNotEmpty() contentType: string;
-    @ApiProperty({ example: 'medical-records' }) @IsString() @IsNotEmpty() folder: string;
+    @ApiProperty() @IsString() @IsNotEmpty() filename!: string;
+    @ApiProperty() @IsString() @IsNotEmpty() contentType!: string;
+    @ApiProperty({ example: 'medical-records' }) @IsString() @IsNotEmpty() folder!: string;
 }
 
 @ApiTags('files')
@@ -31,3 +31,4 @@ export class FilesController {
         );
     }
 }
+

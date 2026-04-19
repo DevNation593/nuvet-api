@@ -8,6 +8,7 @@ import { CreateUserDto, UpdateUserDto } from '../../application/dto/user.dto';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
+import { Auditable } from '../../../common/decorators/auditable.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
 
@@ -28,6 +29,7 @@ export class UsersController {
     @Post()
     @Roles(UserRole.CLINIC_ADMIN)
     @Permissions(`${PermissionModule.USERS}:${PermissionAction.CREATE}`)
+    @Auditable({ action: 'USER_CREATED', entity: 'User' })
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a new staff user (CLINIC_ADMIN only)' })
     create(@CurrentUser() user: JwtPayload, @Body() dto: CreateUserDto) {
@@ -45,6 +47,7 @@ export class UsersController {
     @Patch(':id')
     @Roles(UserRole.CLINIC_ADMIN)
     @Permissions(`${PermissionModule.USERS}:${PermissionAction.UPDATE}`)
+    @Auditable({ action: 'USER_UPDATED', entity: 'User' })
     @ApiOperation({ summary: 'Update user details (CLINIC_ADMIN only)' })
     update(
         @CurrentUser() user: JwtPayload,
@@ -57,6 +60,7 @@ export class UsersController {
     @Delete(':id')
     @Roles(UserRole.CLINIC_ADMIN)
     @Permissions(`${PermissionModule.USERS}:${PermissionAction.DELETE}`)
+    @Auditable({ action: 'USER_DEACTIVATED', entity: 'User' })
     @ApiOperation({ summary: 'Deactivate a user (CLINIC_ADMIN only, soft-delete)' })
     remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
         return this.usersService.remove(user.tenantId, id, user.sub);

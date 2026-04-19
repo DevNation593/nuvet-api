@@ -9,12 +9,18 @@ export class PetsService {
         @Inject(PET_REPOSITORY) private readonly petRepo: IPetRepository,
     ) {}
 
-    async findAll(tenantId: string, query: PaginationQueryDto, ownerId?: string) {
+    async findAll(
+        tenantId: string,
+        query: PaginationQueryDto,
+        ownerId?: string,
+        includeInactive = false,
+    ) {
         const { skip, take, page, limit } = buildPaginationArgs(query);
         const { data, total } = await this.petRepo.findAll(
             tenantId,
             { skip, take, sortBy: query.sortBy, sortOrder: query.sortOrder },
             ownerId,
+            includeInactive,
         );
         return buildPaginatedResponse(data, total, page, limit);
     }
@@ -48,5 +54,18 @@ export class PetsService {
         await this.findOne(tenantId, id);
         await this.petRepo.softDelete(id);
         return { message: 'Pet deactivated successfully' };
+    }
+
+    async reactivate(tenantId: string, id: string) {
+        const pet = await this.petRepo.findOne(tenantId, id);
+        if (!pet) throw new NotFoundException('Pet not found');
+        await this.petRepo.reactivate(id);
+        return { message: 'Pet reactivated successfully' };
+    }
+
+    async getClinicalHistory(tenantId: string, id: string) {
+        const history = await this.petRepo.getClinicalHistory(tenantId, id);
+        if (!history) throw new NotFoundException('Pet not found');
+        return history;
     }
 }

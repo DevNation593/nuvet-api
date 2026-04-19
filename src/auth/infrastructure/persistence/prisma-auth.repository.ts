@@ -5,6 +5,8 @@ import {
     UserWithTenant,
     RefreshTokenWithUser,
     CreateRefreshTokenData,
+    PasswordResetTokenRecord,
+    EmailVerificationTokenRecord,
 } from '../../domain/auth.repository';
 
 @Injectable()
@@ -78,6 +80,60 @@ export class PrismaAuthRepository implements IAuthRepository {
         await this.prisma.$transaction(async (tx) => {
             await tx.user.update({ where: { id: userId }, data: { passwordHash } });
             await tx.refreshToken.deleteMany({ where: { userId } });
+        });
+    }
+
+    async findUserByEmail(email: string): Promise<UserWithTenant | null> {
+        return this.prisma.user.findFirst({
+            where: { email: { equals: email, mode: 'insensitive' } },
+            include: { tenant: true },
+        }) as Promise<UserWithTenant | null>;
+    }
+
+    async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+        await this.prisma.passwordResetToken.create({
+            data: { userId, token, expiresAt },
+        });
+    }
+
+    async findPasswordResetToken(token: string): Promise<PasswordResetTokenRecord | null> {
+        return this.prisma.passwordResetToken.findUnique({
+            where: { token },
+            include: { user: { include: { tenant: true } } },
+        }) as Promise<PasswordResetTokenRecord | null>;
+    }
+
+    async markPasswordResetTokenUsed(id: string): Promise<void> {
+        await this.prisma.passwordResetToken.update({
+            where: { id },
+            data: { usedAt: new Date() },
+        });
+    }
+
+    async createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+        await this.prisma.emailVerificationToken.create({
+            data: { userId, token, expiresAt },
+        });
+    }
+
+    async findEmailVerificationToken(token: string): Promise<EmailVerificationTokenRecord | null> {
+        return this.prisma.emailVerificationToken.findUnique({
+            where: { token },
+            include: { user: { include: { tenant: true } } },
+        }) as Promise<EmailVerificationTokenRecord | null>;
+    }
+
+    async markEmailVerificationTokenUsed(id: string): Promise<void> {
+        await this.prisma.emailVerificationToken.update({
+            where: { id },
+            data: { usedAt: new Date() },
+        });
+    }
+
+    async markEmailVerified(userId: string): Promise<void> {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { emailVerified: true },
         });
     }
 }

@@ -141,6 +141,7 @@ model Tenant {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  config             TenantConfig?
   users              User[]
   pets               Pet[]
   appointments       Appointment[]
@@ -165,6 +166,21 @@ model Tenant {
   posRefunds             PosRefund[]
 
   @@map("tenants")
+}
+
+model TenantConfig {
+  id                       String   @id @default(uuid())
+  tenantId                 String   @unique
+  billingApiKey            String?
+  billingApiSecret         String?
+  billingEstablishmentCode String?  @default("001")
+  billingEmissionPointCode String?  @default("001")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_configs")
 }
 
 // ─── Sucursales ───────────────────────────────────────────────────────────────
@@ -206,34 +222,38 @@ model User {
   passwordHash String
   firstName    String
   lastName     String
-  role         UserRole
-  phone        String?
+  role            UserRole
+  identification  String?
+  phone           String?
   avatarUrl    String?
   isActive     Boolean  @default(true)
-  pushToken    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  pushToken       String?
+  emailVerified   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch              Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  pets                Pet[]                @relation("PetOwner")
-  vetAppointments     Appointment[]        @relation("AppointmentVet")
-  groomerAppointments Appointment[]        @relation("AppointmentGroomer")
-  medicalRecords      MedicalRecord[]
-  vaccinations        Vaccination[]
-  aestheticServices   AestheticService[]
-  surgeries           Surgery[]
-  orders              Order[]
-  notifications       Notification[]
-  auditLogs           AuditLog[]
-  refreshTokens       RefreshToken[]
-  staffSchedules      StaffSchedule[]
-  blocks              Block[]
-  cashRegistersOpened CashRegister[]  @relation("CashRegisterOpenedBy")
-  cashRegistersClosed CashRegister[]  @relation("CashRegisterClosedBy")
-  posTicketsCreated   PosTicket[]     @relation("PosTicketCreatedBy")
-  posClientTickets    PosTicket[]     @relation("PosTicketClient")
-  posRefunds          PosRefund[]     @relation("PosRefundBy")
+  tenant                  Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch                  Branch?                 @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  pets                    Pet[]                   @relation("PetOwner")
+  vetAppointments         Appointment[]           @relation("AppointmentVet")
+  groomerAppointments     Appointment[]           @relation("AppointmentGroomer")
+  medicalRecords          MedicalRecord[]
+  vaccinations            Vaccination[]
+  aestheticServices       AestheticService[]
+  surgeries               Surgery[]
+  orders                  Order[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  staffSchedules          StaffSchedule[]
+  blocks                  Block[]
+  cashRegistersOpened     CashRegister[]  @relation("CashRegisterOpenedBy")
+  cashRegistersClosed     CashRegister[]  @relation("CashRegisterClosedBy")
+  posTicketsCreated       PosTicket[]     @relation("PosTicketCreatedBy")
+  posClientTickets        PosTicket[]     @relation("PosTicketClient")
+  posRefunds              PosRefund[]     @relation("PosRefundBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -250,7 +270,36 @@ model RefreshToken {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 model Pet {
@@ -318,7 +367,10 @@ model Appointment {
   @@index([branchId])
   @@index([petId])
   @@index([vetId])
+  @@index([groomerId])
   @@index([scheduledAt])
+  @@index([tenantId, scheduledAt])
+  @@index([tenantId, status])
   @@map("appointments")
 }
 
@@ -486,8 +538,11 @@ model Vaccination {
   vet         User         @relation(fields: [vetId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
 
+  @@index([tenantId])
   @@index([petId])
+  @@index([vetId])
   @@index([nextDueAt])
+  @@index([tenantId, nextDueAt])
   @@map("vaccinations")
 }
 
@@ -509,6 +564,7 @@ model AestheticService {
   groomer     User         @relation(fields: [groomerId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
 
+  @@index([tenantId])
   @@index([petId])
   @@index([groomerId])
   @@map("aesthetic_services")
@@ -538,6 +594,7 @@ model Surgery {
   vet         User         @relation(fields: [vetId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
 
+  @@index([tenantId])
   @@index([petId])
   @@index([vetId])
   @@map("surgeries")
@@ -627,6 +684,8 @@ model Order {
 
   @@index([tenantId])
   @@index([clientId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
   @@map("orders")
 }
 
@@ -677,6 +736,8 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id])
 
   @@index([tenantId])
+  @@index([orderId])
+  @@index([productId])
   @@map("order_items")
 }
 
@@ -698,6 +759,7 @@ model Adoption {
   pet    Pet    @relation(fields: [petId], references: [id])
 
   @@index([tenantId])
+  @@index([petId])
   @@index([status])
   @@map("adoptions")
 }
@@ -761,8 +823,8 @@ model Discount {
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orderItems DiscountUsage[]
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usages     DiscountUsage[]
 
   @@index([tenantId])
   @@index([tenantId, startAt])
@@ -774,16 +836,19 @@ model DiscountUsage {
   id          String   @id @default(uuid())
   tenantId    String
   discountId  String
-  orderId     String
+  orderId     String?
+  posTicketId String?
   savedAmount Float
   createdAt   DateTime @default(now())
 
-  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  discount  Discount  @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  order     Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  posTicket PosTicket? @relation(fields: [posTicketId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([discountId])
   @@index([orderId])
+  @@index([posTicketId])
   @@map("discount_usages")
 }
 
@@ -804,6 +869,7 @@ model AuditLog {
   user   User?  @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
+  @@index([tenantId, createdAt])
   @@index([entity, entityId])
   @@map("audit_logs")
 }
@@ -848,6 +914,8 @@ model CashRegister {
   tickets  PosTicket[]
 
   @@index([tenantId])
+  @@index([branchId])
+  @@index([openedById])
   @@index([tenantId, status])
   @@map("cash_registers")
 }
@@ -882,6 +950,7 @@ model PosTicket {
   items     PosTicketItem[]
   payments  PosPayment[]
   refunds   PosRefund[]
+  discountUsages DiscountUsage[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -906,6 +975,7 @@ model PosTicketItem {
   product Product?  @relation(fields: [productId], references: [id])
 
   @@index([ticketId])
+  @@index([productId])
   @@map("pos_ticket_items")
 }
 

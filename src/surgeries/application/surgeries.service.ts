@@ -47,7 +47,7 @@ export class SurgeriesService {
 
     async update(tenantId: string, id: string, dto: UpdateSurgeryDto) {
         await this.findOne(tenantId, id);
-        return this.surgeryRepo.update(id, {
+        return this.surgeryRepo.update(tenantId, id, {
             ...dto,
             scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
             consentSignedAt: dto.consentSignedAt ? new Date(dto.consentSignedAt) : undefined,

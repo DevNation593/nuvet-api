@@ -28,7 +28,7 @@ export interface ISurgeryRepository {
     findOne(tenantId: string, id: string): Promise<unknown | null>;
     petExists(tenantId: string, petId: string): Promise<boolean>;
     create(data: CreateSurgeryData): Promise<unknown>;
-    update(id: string, data: Partial<Omit<CreateSurgeryData, 'tenantId' | 'petId' | 'vetId' | 'type'>>): Promise<unknown>;
+    update(tenantId: string, id: string, data: Partial<Omit<CreateSurgeryData, 'tenantId' | 'petId' | 'vetId' | 'type'>>): Promise<unknown>;
 }
 
 export const SURGERY_REPOSITORY = Symbol('ISurgeryRepository');

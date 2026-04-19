@@ -40,6 +40,7 @@ export class AppointmentsService {
                 status: filter.status,
                 dateFrom: filter.dateFrom,
                 dateTo: filter.dateTo,
+                branchId: filter.branchId,
             },
             { skip, take },
             (query.sortOrder as 'asc' | 'desc') || 'asc',
@@ -71,6 +72,7 @@ export class AppointmentsService {
             scheduledAt: dto.scheduledAt,
             durationMinutes: dto.durationMinutes || 30,
             notes: dto.notes,
+            branchId: dto.branchId,
         });
     }
 
@@ -124,18 +126,83 @@ export class AppointmentsService {
         return updated;
     }
 
-    async getAvailability(tenantId: string, date: string, staffId: string) {
+    async getAvailability(tenantId: string, date: string, staffId: string, branchId?: string) {
         const targetDate = new Date(date);
         const dayStr = targetDate.toISOString().slice(0, 10);
 
         const { holiday, clinicHours, schedule, blocks, booked } =
-            await this.appointmentRepo.getAvailabilityData(tenantId, staffId, dayStr, targetDate);
+            await this.appointmentRepo.getAvailabilityData(tenantId, staffId, dayStr, targetDate, branchId);
 
         if (holiday) {
             return { slots: [], reason: 'Holiday: Closed' };
         }
 
+        const slots = this.buildSlots(targetDate, clinicHours, schedule, blocks, booked);
+        return { slots };
+    }
+
+    async getAssignableStaff(tenantId: string) {
+        return this.appointmentRepo.getAssignableStaff(tenantId);
+    }
+
+    async getClinicAvailability(tenantId: string, date: string, type: string) {
+        const targetDate = new Date(date);
+        const dayStr = targetDate.toISOString().slice(0, 10);
+
+        const [assignable, tenantContext] = await Promise.all([
+            this.appointmentRepo.getAssignableStaff(tenantId),
+            this.appointmentRepo.getTenantDayContext(tenantId, dayStr, targetDate),
+        ]);
+
+        if (tenantContext.holiday) return { slots: [], reason: 'Holiday: Closed' };
+
+        const requiresGroomer = type === AppointmentType.AESTHETICS;
+        const eligibleStaff = assignable.filter((staff) =>
+            requiresGroomer
+                ? staff.role === UserRole.GROOMER || staff.role === UserRole.CLINIC_ADMIN
+                : staff.role === UserRole.VET || staff.role === UserRole.CLINIC_ADMIN,
+        );
+
+        if (eligibleStaff.length === 0) return { slots: [] };
+
+        const staffDataList = await Promise.all(
+            eligibleStaff.map(async (staff) => {
+                const data = await this.appointmentRepo.getStaffDayData(tenantId, staff.id, dayStr, targetDate);
+                return { staffId: staff.id, ...data };
+            }),
+        );
+
+        const merged = new Map<string, { time: string; available: boolean; staffId?: string }>();
+
+        for (const staffData of staffDataList) {
+            const slots = this.buildSlots(targetDate, tenantContext.clinicHours, staffData.schedule, staffData.blocks, staffData.booked);
+            for (const slot of slots) {
+                const current = merged.get(slot.time);
+                if (!current) {
+                    merged.set(slot.time, {
+                        time: slot.time,
+                        available: slot.available,
+                        staffId: slot.available ? staffData.staffId : undefined,
+                    });
+                } else if (!current.available && slot.available) {
+                    merged.set(slot.time, { time: slot.time, available: true, staffId: staffData.staffId });
+                }
+            }
+        }
+
+        const slots = Array.from(merged.values()).sort((a, b) => a.time.localeCompare(b.time));
+        return { slots };
+    }
+
+    private buildSlots(
+        targetDate: Date,
+        clinicHours: { openTime: string; closeTime: string } | null,
+        schedule: { startTime: string; endTime: string } | null,
+        blocks: Array<{ startTime: Date; endTime: Date }>,
+        booked: Array<{ scheduledAt: Date; durationMinutes: number }>,
+    ): Array<{ time: string; available: boolean }> {
         let startHour = 9, startMin = 0, endHour = 17, endMin = 0, isClosed = false;
+
         if (schedule) {
             startHour = parseInt(schedule.startTime.split(':')[0], 10);
             startMin = parseInt(schedule.startTime.split(':')[1] ?? '0', 10);
@@ -152,15 +219,16 @@ export class AppointmentsService {
             }
         }
 
+        if (isClosed) return [];
+
         const dayStart = new Date(targetDate);
         dayStart.setHours(startHour, startMin, 0, 0);
         const dayEnd = new Date(targetDate);
         dayEnd.setHours(endHour, endMin, 0, 0);
 
-        const slots: { time: string; available: boolean }[] = [];
-        if (isClosed) return { slots };
-
+        const slots: Array<{ time: string; available: boolean }> = [];
         let current = new Date(dayStart);
+
         while (current < dayEnd) {
             const slotEnd = new Date(current.getTime() + 30 * 60000);
             const inBlock = blocks.some((b) => current < b.endTime && slotEnd > b.startTime);
@@ -170,52 +238,9 @@ export class AppointmentsService {
                 return current < end && slotEnd > start;
             });
             slots.push({ time: current.toISOString(), available: !inBlock && !isBooked });
-            current.setMinutes(current.getMinutes() + 30);
-        }
-        return { slots };
-    }
-
-    async getAssignableStaff(tenantId: string) {
-        return this.appointmentRepo.getAssignableStaff(tenantId);
-    }
-
-    async getClinicAvailability(tenantId: string, date: string, type: string) {
-        const assignable = await this.appointmentRepo.getAssignableStaff(tenantId);
-        const requiresGroomer = type === AppointmentType.AESTHETICS;
-        const eligibleStaff = assignable.filter((staff) =>
-            requiresGroomer
-                ? staff.role === UserRole.GROOMER || staff.role === UserRole.CLINIC_ADMIN
-                : staff.role === UserRole.VET || staff.role === UserRole.CLINIC_ADMIN,
-        );
-
-        if (eligibleStaff.length === 0) return { slots: [] };
-
-        const availabilityByStaff = await Promise.all(
-            eligibleStaff.map(async (staff) => {
-                const result = await this.getAvailability(tenantId, date, staff.id);
-                return { staffId: staff.id, slots: result.slots ?? [] };
-            }),
-        );
-
-        const merged = new Map<string, { time: string; available: boolean; staffId?: string }>();
-        for (const source of availabilityByStaff) {
-            for (const slot of source.slots) {
-                const current = merged.get(slot.time);
-                if (!current) {
-                    merged.set(slot.time, {
-                        time: slot.time,
-                        available: slot.available,
-                        staffId: slot.available ? source.staffId : undefined,
-                    });
-                    continue;
-                }
-                if (!current.available && slot.available) {
-                    merged.set(slot.time, { time: slot.time, available: true, staffId: source.staffId });
-                }
-            }
+            current = new Date(current.getTime() + 30 * 60000);
         }
 
-        const slots = Array.from(merged.values()).sort((a, b) => a.time.localeCompare(b.time));
-        return { slots };
+        return slots;
     }
 }
