@@ -34,4 +34,41 @@ export class ReportsService {
     getExpiringStock(tenantId: string, daysAhead = 30) {
         return this.reportRepo.getExpiringStock(tenantId, daysAhead);
     }
+
+    getTransactionsEvidence(tenantId: string, from: string, to: string, status?: string) {
+        return this.reportRepo.getTransactionsEvidence(tenantId, from, to, status);
+    }
+
+    getPosDiscountUsageReport(
+        tenantId: string,
+        from: string,
+        to: string,
+        branchId?: string,
+        discountId?: string,
+    ) {
+        return this.reportRepo.getPosDiscountUsageReport(tenantId, from, to, branchId, discountId);
+    }
+
+    getInventoryKardex(
+        tenantId: string,
+        filters: { productId?: string; from?: string; to?: string },
+    ) {
+        return this.reportRepo.getInventoryKardex(tenantId, filters);
+    }
+
+    getRestockSuggestions(tenantId: string, lookbackDays = 30) {
+        return this.reportRepo.getRestockSuggestions(tenantId, lookbackDays);
+    }
+
+    getClientSegmentation(
+        tenantId: string,
+        minFrequentPurchases = 3,
+        inactiveDays = 60,
+    ) {
+        return this.reportRepo.getClientSegmentation(tenantId, minFrequentPurchases, inactiveDays);
+    }
+
+    getExecutiveKpis(tenantId: string, from: string, to: string) {
+        return this.reportRepo.getExecutiveKpis(tenantId, from, to);
+    }
 }

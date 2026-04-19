@@ -29,6 +29,7 @@ export enum PermissionModule {
   DISCOUNTS = 'discounts',
   BRANCHES = 'branches',
   POS = 'pos',
+  BILLING = 'billing',
 }
 
 export enum PermissionAction {
@@ -61,6 +62,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.VACCINATIONS}:${PermissionAction.CREATE}`,
     `${PermissionModule.VACCINATIONS}:${PermissionAction.UPDATE}`,
     ...permissionsForModule(PermissionModule.SURGERIES),
+    `${PermissionModule.BRANCHES}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.REPORTS}:${PermissionAction.READ}`,
     `${PermissionModule.FILES}:${PermissionAction.READ}`,
@@ -80,17 +82,21 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.STORE}:${PermissionAction.CREATE}`,
     `${PermissionModule.STORE}:${PermissionAction.UPDATE}`,
     `${PermissionModule.ADOPTIONS}:${PermissionAction.READ}`,
+    `${PermissionModule.BRANCHES}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.UPDATE}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.DELETE}`,
     `${PermissionModule.USERS}:${PermissionAction.READ}`,
     ...permissionsForModule(PermissionModule.POS),
+    `${PermissionModule.BILLING}:${PermissionAction.READ}`,
+    `${PermissionModule.BILLING}:${PermissionAction.CREATE}`,
   ],
   [UserRole.GROOMER]: [
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.READ}`,
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.UPDATE}`,
     ...permissionsForModule(PermissionModule.AESTHETICS),
     `${PermissionModule.PETS}:${PermissionAction.READ}`,
+    `${PermissionModule.BRANCHES}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
   ],
   [UserRole.INVENTORY]: [
@@ -310,11 +316,15 @@ export const PLAN_MODULES: Record<TenantPlan, PermissionModule[]> = {
     PermissionModule.STORE,
     PermissionModule.INVENTORY,
     PermissionModule.ADOPTIONS,
+    PermissionModule.POS,
+    PermissionModule.DISCOUNTS,
+    PermissionModule.BRANCHES,
     PermissionModule.USERS,
     PermissionModule.TENANT_SETTINGS,
     PermissionModule.NOTIFICATIONS,
     PermissionModule.REPORTS,
     PermissionModule.FILES,
+    PermissionModule.BILLING,
   ],
   [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };
@@ -344,6 +354,8 @@ export interface Tenant {
   logoUrl?: string;
   phone?: string;
   address?: string;
+  email?: string;
+  website?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -50,6 +50,17 @@ Backend multi-tenant para la plataforma NuVet, construido con NestJS, Prisma y P
    SMTP_FROM="NuVet <noreply@nuvet.app>"
 
    EXPO_ACCESS_TOKEN=<expo_token>
+
+   BILLING_FAKTUR_API_BASE_URL=https://api.faktur.com.ec
+   BILLING_FAKTUR_API_KEY=sk_xxx
+   BILLING_FAKTUR_API_SECRET=<faktur_secret>
+   BILLING_FAKTUR_TIMEOUT_MS=12000
+   BILLING_FAKTUR_KEY_MODE=POINT
+   BILLING_FAKTUR_ESTABLISHMENT_CODE=001
+   BILLING_FAKTUR_EMISSION_POINT_CODE=001
+   BILLING_FAKTUR_TAX_CODE=2
+   BILLING_FAKTUR_IVA_RATE_CODE=2
+   BILLING_FAKTUR_ASYNC_EMISSION=false
    ```
 3) Generar cliente Prisma y aplicar migraciones:
    ```bash
@@ -101,3 +112,5 @@ Endpoint rapido para monitoreo: `GET /api/v1/health`.
 
 ## Estructura de modulos (resumen)
 Autenticacion, tenants, usuarios, clientes, mascotas, citas, historiales medicos, vacunaciones, estetica/grooming, cirugias, inventario, tienda, adopciones, notificaciones, reportes y archivos (S3/MinIO).
+
+Incluye tambien POS y facturacion electronica integrada con API externa.

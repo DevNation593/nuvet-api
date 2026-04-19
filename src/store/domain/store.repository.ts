@@ -78,9 +78,9 @@ export interface IStoreRepository {
 
     createProduct(data: CreateProductData): Promise<unknown>;
 
-    updateProduct(id: string, data: Record<string, unknown>): Promise<unknown>;
+    updateProduct(tenantId: string, id: string, data: Record<string, unknown>): Promise<unknown>;
 
-    deactivateProduct(id: string): Promise<unknown>;
+    deactivateProduct(tenantId: string, id: string): Promise<unknown>;
 
     adjustStock(data: StockAdjustmentData, newStock: number): Promise<unknown>;
 

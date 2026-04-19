@@ -7,6 +7,7 @@ export interface AppointmentFilterParams {
     status?: AppointmentStatus;
     dateFrom?: string;
     dateTo?: string;
+    branchId?: string;
 }
 
 export interface AppointmentPaginationParams {
@@ -59,6 +60,17 @@ export interface StaffMember {
     role: UserRole;
 }
 
+export interface TenantDayContext {
+    holiday: { id: string } | null;
+    clinicHours: { openTime: string; closeTime: string } | null;
+}
+
+export interface StaffDayData {
+    schedule: { startTime: string; endTime: string } | null;
+    blocks: Array<{ startTime: Date; endTime: Date }>;
+    booked: Array<{ scheduledAt: Date; durationMinutes: number }>;
+}
+
 export interface IAppointmentRepository {
     findAll(
         tenantId: string,
@@ -87,7 +99,12 @@ export interface IAppointmentRepository {
         staffId: string,
         dayStr: string,
         date: Date,
+        branchId?: string,
     ): Promise<AvailabilityData>;
+
+    getTenantDayContext(tenantId: string, dayStr: string, date: Date, branchId?: string): Promise<TenantDayContext>;
+
+    getStaffDayData(tenantId: string, staffId: string, dayStr: string, date: Date, branchId?: string): Promise<StaffDayData>;
 
     checkConflict(
         tenantId: string,

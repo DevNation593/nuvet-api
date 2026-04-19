@@ -13,30 +13,25 @@ import { UserRole } from '@nuvet/types';
 export class CreateUserDto {
     @ApiProperty({ example: 'jane@happypaws.com' })
     @IsEmail()
-    email: string;
-
+    email!: string;
     @ApiProperty({ example: 'Jane' })
     @IsString()
     @IsNotEmpty()
     @MaxLength(50)
-    firstName: string;
-
+    firstName!: string;
     @ApiProperty({ example: 'Smith' })
     @IsString()
     @IsNotEmpty()
     @MaxLength(50)
-    lastName: string;
-
+    lastName!: string;
     @ApiProperty({ enum: UserRole, example: UserRole.VET })
     @IsEnum(UserRole)
-    role: UserRole;
-
+    role!: UserRole;
     @ApiProperty({ example: 'TempPass123!', minLength: 8 })
     @IsString()
     @IsNotEmpty()
     @MaxLength(64)
-    password: string;
-
+    password!: string;
     @ApiPropertyOptional({ example: '+1234567890' })
     @IsOptional()
     @IsString()
@@ -49,3 +44,4 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
     @IsBoolean()
     isActive?: boolean;
 }
+

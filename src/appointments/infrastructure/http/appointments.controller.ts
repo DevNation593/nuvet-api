@@ -37,12 +37,14 @@ export class AppointmentsController {
     @ApiOperation({ summary: 'Get available time slots for a vet on a given date' })
     @ApiQuery({ name: 'date', example: '2026-03-01', required: true })
     @ApiQuery({ name: 'vetId', required: true })
+    @ApiQuery({ name: 'branchId', required: false })
     getAvailability(
         @CurrentUser() user: JwtPayload,
         @Query('date') date: string,
         @Query('vetId') vetId: string,
+        @Query('branchId') branchId?: string,
     ) {
-        return this.appointmentsService.getAvailability(user.tenantId, date, vetId);
+        return this.appointmentsService.getAvailability(user.tenantId, date, vetId, branchId);
     }
 
     @Get('staff')

@@ -22,7 +22,7 @@ export class PrismaNotificationRepository implements INotificationRepository {
             userId,
             ...(unreadOnly ? { readAt: null } : {}),
         };
-        const [data, total] = await Promise.all([
+        const [rows, total] = await Promise.all([
             this.prisma.notification.findMany({
                 where,
                 skip: query.skip,
@@ -31,6 +31,10 @@ export class PrismaNotificationRepository implements INotificationRepository {
             }),
             this.prisma.notification.count({ where }),
         ]);
+        const data = rows.map(({ readAt, ...rest }) => ({
+            ...rest,
+            isRead: readAt !== null,
+        }));
         return { data, total };
     }
 

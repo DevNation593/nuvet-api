@@ -13,26 +13,22 @@ import {
 export class CreateClientDto {
     @ApiProperty({ example: 'client@example.com' })
     @IsEmail()
-    email: string;
-
+    email!: string;
     @ApiProperty({ example: 'Ana' })
     @IsString()
     @IsNotEmpty()
     @MaxLength(50)
-    firstName: string;
-
+    firstName!: string;
     @ApiProperty({ example: 'Gomez' })
     @IsString()
     @IsNotEmpty()
     @MaxLength(50)
-    lastName: string;
-
+    lastName!: string;
     @ApiProperty({ example: 'ClientPass123!', minLength: 8 })
     @IsString()
     @MinLength(8)
     @MaxLength(64)
-    password: string;
-
+    password!: string;
     @ApiPropertyOptional({ example: '+593999999999' })
     @IsOptional()
     @IsString()
@@ -46,3 +42,4 @@ export class UpdateClientDto extends PartialType(CreateClientDto) {
     @IsBoolean()
     isActive?: boolean;
 }
+

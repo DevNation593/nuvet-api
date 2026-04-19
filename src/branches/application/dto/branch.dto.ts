@@ -7,8 +7,7 @@ export class CreateBranchDto {
     @ApiProperty({ example: 'Sucursal Centro' })
     @IsString()
     @IsNotEmpty()
-    name: string;
-
+    name!: string;
     @ApiPropertyOptional({ example: 'Av. Principal 123, Col. Centro' })
     @IsOptional()
     @IsString()
@@ -49,3 +48,4 @@ export class UpdateBranchDto extends PartialType(CreateBranchDto) {
     @IsBoolean()
     isActive?: boolean;
 }
+

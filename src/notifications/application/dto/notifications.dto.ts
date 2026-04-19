@@ -1,23 +1,26 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { NotificationChannel } from '@nuvet/types';
 import {
+    IsArray,
     IsEnum,
+    IsInt,
     IsNotEmpty,
     IsObject,
     IsOptional,
     IsString,
+    Max,
+    Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateNotificationTemplateDto {
     @ApiProperty({ example: 'appointment_reminder' })
     @IsString()
     @IsNotEmpty()
-    key: string;
-
+    key!: string;
     @ApiProperty({ enum: NotificationChannel, example: NotificationChannel.IN_APP })
     @IsEnum(NotificationChannel)
-    channel: NotificationChannel;
-
+    channel!: NotificationChannel;
     @ApiPropertyOptional({ example: 'Recordatorio de cita' })
     @IsOptional()
     @IsString()
@@ -26,7 +29,7 @@ export class CreateNotificationTemplateDto {
     @ApiProperty({ example: 'Hola {{clientName}}, tu cita es el {{date}}.' })
     @IsString()
     @IsNotEmpty()
-    bodyTemplate: string;
+    bodyTemplate!: string;
 }
 
 export class UpdateNotificationTemplateDto extends PartialType(CreateNotificationTemplateDto) { }
@@ -35,13 +38,11 @@ export class TriggerNotificationDto {
     @ApiProperty({ example: 'appointment_reminder' })
     @IsString()
     @IsNotEmpty()
-    key: string;
-
+    key!: string;
     @ApiProperty({ example: 'user-id-target' })
     @IsString()
     @IsNotEmpty()
-    userId: string;
-
+    userId!: string;
     @ApiPropertyOptional({ enum: NotificationChannel, example: NotificationChannel.IN_APP })
     @IsOptional()
     @IsEnum(NotificationChannel)
@@ -52,3 +53,24 @@ export class TriggerNotificationDto {
     @IsObject()
     data?: Record<string, unknown>;
 }
+
+export class GenerateClinicalRemindersDto {
+    @ApiPropertyOptional({ example: 3, minimum: 1, maximum: 30, default: 3 })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @Max(30)
+    daysAhead?: number = 3;
+
+    @ApiPropertyOptional({
+        enum: NotificationChannel,
+        isArray: true,
+        example: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+    })
+    @IsOptional()
+    @IsArray()
+    @IsEnum(NotificationChannel, { each: true })
+    channels?: NotificationChannel[];
+}
+

@@ -4,10 +4,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PetsService } from '../../application/pets.service';
-import { CreatePetDto, UpdatePetDto } from '../../application/dto/pet.dto';
-import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
+import { CreatePetDto, PetsListQueryDto, UpdatePetDto } from '../../application/dto/pet.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
+import { Auditable } from '../../../common/decorators/auditable.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
 
@@ -20,14 +20,19 @@ export class PetsController {
     @Get()
     @Permissions(`${PermissionModule.PETS}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'List pets. Clients see only their own pets.' })
-    findAll(@CurrentUser() user: JwtPayload, @Query() query: PaginationQueryDto) {
+    findAll(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: PetsListQueryDto,
+    ) {
         const ownerId = user.role === UserRole.CLIENT ? user.sub : undefined;
-        return this.petsService.findAll(user.tenantId, query, ownerId);
+        const includeInactiveFlag = user.role === UserRole.CLIENT ? false : Boolean(query.includeInactive);
+        return this.petsService.findAll(user.tenantId, query, ownerId, includeInactiveFlag);
     }
 
     @Post()
     @Roles(UserRole.CLINIC_ADMIN, UserRole.VET, UserRole.RECEPTIONIST, UserRole.CLIENT)
     @Permissions(`${PermissionModule.PETS}:${PermissionAction.CREATE}`)
+    @Auditable({ action: 'PET_CREATED', entity: 'Pet' })
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Register a new pet' })
     create(@CurrentUser() user: JwtPayload, @Body() dto: CreatePetDto) {
@@ -43,9 +48,17 @@ export class PetsController {
         return this.petsService.findOne(user.tenantId, id, ownerId);
     }
 
+    @Get(':id/clinical-history')
+    @Permissions(`${PermissionModule.PETS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Get full clinical history for a pet (records, vaccinations, surgeries)' })
+    getClinicalHistory(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+        return this.petsService.getClinicalHistory(user.tenantId, id);
+    }
+
     @Patch(':id')
     @Roles(UserRole.CLINIC_ADMIN, UserRole.VET, UserRole.RECEPTIONIST, UserRole.CLIENT)
     @Permissions(`${PermissionModule.PETS}:${PermissionAction.UPDATE}`)
+    @Auditable({ action: 'PET_UPDATED', entity: 'Pet' })
     @ApiOperation({ summary: 'Update pet information' })
     update(
         @CurrentUser() user: JwtPayload,
@@ -59,9 +72,18 @@ export class PetsController {
     @Delete(':id')
     @Roles(UserRole.CLINIC_ADMIN)
     @Permissions(`${PermissionModule.PETS}:${PermissionAction.DELETE}`)
+    @Auditable({ action: 'PET_DEACTIVATED', entity: 'Pet' })
     @ApiOperation({ summary: 'Deactivate pet (CLINIC_ADMIN only, soft-delete)' })
     remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
         return this.petsService.remove(user.tenantId, id);
+    }
+
+    @Patch(':id/reactivate')
+    @Roles(UserRole.CLINIC_ADMIN)
+    @Permissions(`${PermissionModule.PETS}:${PermissionAction.UPDATE}`)
+    @ApiOperation({ summary: 'Reactivate pet (CLINIC_ADMIN only)' })
+    reactivate(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+        return this.petsService.reactivate(user.tenantId, id);
     }
 }
 

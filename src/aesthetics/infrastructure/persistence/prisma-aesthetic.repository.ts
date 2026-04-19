@@ -47,6 +47,8 @@ export class PrismaAestheticRepository implements IAestheticRepository {
         id: string,
         data: Partial<Omit<CreateAestheticData, 'tenantId'>>,
     ): Promise<unknown> {
+        const existing = await this.prisma.aestheticService.findFirst({ where: { id, tenantId }, select: { id: true } });
+        if (!existing) return null;
         return this.prisma.aestheticService.update({ where: { id }, data });
     }
 }

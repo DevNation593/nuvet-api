@@ -46,11 +46,12 @@ export class PrismaClientRepository implements IClientRepository {
         return client as ClientEntity | null;
     }
 
-    async findByEmail(tenantId: string, email: string): Promise<ClientEntity | null> {
+    async findByEmail(tenantId: string, email: string): Promise<{ id: string } | null> {
         const client = await this.prisma.user.findUnique({
             where: { tenantId_email: { tenantId, email } },
+            select: { id: true },
         });
-        return client as unknown as ClientEntity | null;
+        return client;
     }
 
     async create(data: CreateClientData): Promise<ClientEntity> {
