@@ -95,6 +95,7 @@ export interface ExecutiveKpisResult {
     topClients: unknown[];
     byBranch: unknown[];
     byProfessional: unknown[];
+    byPaymentMethod: Array<{ method: string; total: number; count: number }>;
 }
 
 export interface IReportRepository {

@@ -76,11 +76,11 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
         };
     }
 
-    async getInvoiceStatus(providerInvoiceId: string): Promise<ElectronicInvoiceStatusResult> {
+    async getInvoiceStatus(providerInvoiceId: string, credentials?: TenantBillingCredentials): Promise<ElectronicInvoiceStatusResult> {
         const startedAt = Date.now();
         const data = await this.request(`/v1/documents/${providerInvoiceId}`, {
             method: 'GET',
-        });
+        }, credentials);
 
         this.logger.log(
             JSON.stringify({
@@ -104,15 +104,17 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
         };
     }
 
-    async getRideUrl(accessKey: string): Promise<DocumentUrlResult> {
+    async getRideUrl(accessKey: string, credentials?: TenantBillingCredentials): Promise<DocumentUrlResult> {
+        const pdfBuffer = await this.requestBinary(`/v1/documents/ride/${accessKey}`, credentials);
+        const base64 = pdfBuffer.toString('base64');
         return {
-            url: `${this.baseUrl}/v1/documents/ride/${accessKey}`,
+            url: `data:application/pdf;base64,${base64}`,
             filename: `ride-${accessKey}.pdf`,
         };
     }
 
-    async getXmlUrl(accessKey: string, type: 'authorized' | 'signed' | 'unsigned' = 'authorized'): Promise<DocumentUrlResult> {
-        const data = await this.request(`/v1/documents/xml/${accessKey}/${type}`, { method: 'GET' });
+    async getXmlUrl(accessKey: string, type: 'authorized' | 'signed' | 'unsigned' = 'authorized', credentials?: TenantBillingCredentials): Promise<DocumentUrlResult> {
+        const data = await this.request(`/v1/documents/xml/${accessKey}/${type}`, { method: 'GET' }, credentials);
         return {
             url: data?.xml ? `data:application/xml;base64,${Buffer.from(data.xml).toString('base64')}` : '',
             filename: data?.filename ?? `${accessKey}-${type}.xml`,
@@ -137,6 +139,48 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
             data?.files?.xml ??
             undefined
         );
+    }
+
+    private async requestBinary(path: string, credentials?: TenantBillingCredentials): Promise<Buffer> {
+        const effectiveKey = credentials?.apiKey || this.apiKey;
+        const effectiveSecret = credentials?.apiSecret || this.apiSecret;
+
+        if (!effectiveKey || !effectiveSecret) {
+            throw new ServiceUnavailableException(
+                'Faltan credenciales de facturación. Configure API Key y API Secret en Ajustes o en variables de entorno.',
+            );
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+        try {
+            const response = await fetch(`${this.baseUrl}${path}`, {
+                method: 'GET',
+                headers: {
+                    'X-API-Key': effectiveKey,
+                    'X-API-Secret': effectiveSecret,
+                },
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                throw new BadGatewayException(
+                    `Error al descargar documento del proveedor (HTTP ${response.status})`,
+                );
+            }
+
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        } catch (error: any) {
+            if (error instanceof BadGatewayException) throw error;
+            if (error?.name === 'AbortError') {
+                throw new ServiceUnavailableException('Timeout al descargar documento del proveedor');
+            }
+            throw new ServiceUnavailableException('No se pudo descargar el documento del proveedor');
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
     private async request(path: string, init: RequestInit, credentials?: TenantBillingCredentials): Promise<any> {
