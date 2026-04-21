@@ -591,9 +591,7 @@ export class PrismaReportRepository implements IReportRepository {
             }),
             this.prisma.posPayment.groupBy({
                 by: ['method'],
-                where: {
-                    ticket: ticketWhere,
-                },
+                where: { ticket: ticketWhere },
                 _sum: { amount: true },
                 _count: true,
             }),
@@ -675,11 +673,11 @@ export class PrismaReportRepository implements IReportRepository {
         const byProfessional = Array.from(byProfessionalMap.values())
             .sort((a, b) => b.appointments - a.appointments);
 
-        const byPaymentMethod = (paymentMethodRaw as any[]).map((p) => ({
-            method: p.method as string,
-            total: Number((p._sum.amount ?? 0).toFixed(2)),
-            count: p._count as number,
-        })).sort((a, b) => b.total - a.total);
+        const byPaymentMethod = paymentMethodRaw.map((pm) => ({
+            method: pm.method,
+            total: Number((pm._sum.amount ?? 0).toFixed(2)),
+            count: pm._count,
+        }));
 
         return {
             from,

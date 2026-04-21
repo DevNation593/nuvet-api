@@ -68,6 +68,7 @@ export class AppointmentsService {
             tenantId,
             petId: dto.petId,
             vetId: dto.vetId,
+            groomerId: dto.groomerId,
             type: dto.type,
             scheduledAt: dto.scheduledAt,
             durationMinutes: dto.durationMinutes || 30,
