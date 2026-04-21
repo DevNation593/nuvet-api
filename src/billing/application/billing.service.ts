@@ -92,6 +92,10 @@ export class BillingService {
             ];
         }
 
+        if (filter.paymentMethod) {
+            where.payments = { some: { method: filter.paymentMethod } };
+        }
+
         const [data, total] = await Promise.all([
             (this.prisma.posTicket as any).findMany({
                 where,
