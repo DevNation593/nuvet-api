@@ -76,6 +76,10 @@ export class BillingService {
             where.createdAt = createdAt;
         }
 
+        if (filter.paymentMethod) {
+            where.payments = { some: { method: filter.paymentMethod } };
+        }
+
         if (filter.search?.trim()) {
             const term = filter.search.trim();
             where.OR = [
@@ -339,11 +343,12 @@ export class BillingService {
         }
 
         let url: string;
+        const tenantBilling = await this.getTenantBillingConfig(tenantId);
         if (format === 'pdf') {
-            const result = await this.eInvoiceProvider.getRideUrl(accessKey);
+            const result = await this.eInvoiceProvider.getRideUrl(accessKey, tenantBilling);
             url = result.url;
         } else {
-            const result = await this.eInvoiceProvider.getXmlUrl(accessKey, 'authorized');
+            const result = await this.eInvoiceProvider.getXmlUrl(accessKey, 'authorized', tenantBilling);
             url = result.url;
         }
 
@@ -413,7 +418,8 @@ export class BillingService {
         providerInvoiceId: string,
         startedAt: number,
     ) {
-        const status = await this.eInvoiceProvider.getInvoiceStatus(providerInvoiceId);
+        const tenantBilling = await this.getTenantBillingConfig(tenantId);
+        const status = await this.eInvoiceProvider.getInvoiceStatus(providerInvoiceId, tenantBilling);
 
         await (this.prisma.posTicket as any).updateMany({
             where: { id: ticketId, tenantId },
