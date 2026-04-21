@@ -93,4 +93,9 @@ export class InvoiceListFilterDto extends PaginationQueryDto {
     @IsOptional()
     @IsString()
     search?: string;
+
+    @ApiPropertyOptional({ description: 'Filtrar por método de pago (CASH, CARD, TRANSFER)' })
+    @IsOptional()
+    @IsString()
+    paymentMethod?: string;
 }

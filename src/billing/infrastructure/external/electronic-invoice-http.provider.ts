@@ -76,11 +76,11 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
         };
     }
 
-    async getInvoiceStatus(providerInvoiceId: string): Promise<ElectronicInvoiceStatusResult> {
+    async getInvoiceStatus(providerInvoiceId: string, credentials?: TenantBillingCredentials): Promise<ElectronicInvoiceStatusResult> {
         const startedAt = Date.now();
         const data = await this.request(`/v1/documents/${providerInvoiceId}`, {
             method: 'GET',
-        });
+        }, credentials);
 
         this.logger.log(
             JSON.stringify({
@@ -104,8 +104,8 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
         };
     }
 
-    async getRideUrl(accessKey: string): Promise<DocumentUrlResult> {
-        const pdfBuffer = await this.requestBinary(`/v1/documents/ride/${accessKey}`);
+    async getRideUrl(accessKey: string, credentials?: TenantBillingCredentials): Promise<DocumentUrlResult> {
+        const pdfBuffer = await this.requestBinary(`/v1/documents/ride/${accessKey}`, credentials);
         const base64 = pdfBuffer.toString('base64');
         return {
             url: `data:application/pdf;base64,${base64}`,
@@ -113,8 +113,8 @@ export class ElectronicInvoiceHttpProvider implements IElectronicInvoiceProvider
         };
     }
 
-    async getXmlUrl(accessKey: string, type: 'authorized' | 'signed' | 'unsigned' = 'authorized'): Promise<DocumentUrlResult> {
-        const data = await this.request(`/v1/documents/xml/${accessKey}/${type}`, { method: 'GET' });
+    async getXmlUrl(accessKey: string, type: 'authorized' | 'signed' | 'unsigned' = 'authorized', credentials?: TenantBillingCredentials): Promise<DocumentUrlResult> {
+        const data = await this.request(`/v1/documents/xml/${accessKey}/${type}`, { method: 'GET' }, credentials);
         return {
             url: data?.xml ? `data:application/xml;base64,${Buffer.from(data.xml).toString('base64')}` : '',
             filename: data?.filename ?? `${accessKey}-${type}.xml`,
