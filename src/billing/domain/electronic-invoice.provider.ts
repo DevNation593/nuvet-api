@@ -77,9 +77,9 @@ export interface TenantBillingCredentials {
 
 export interface IElectronicInvoiceProvider {
     issueInvoice(payload: ElectronicInvoicePayload, credentials?: TenantBillingCredentials): Promise<IssueElectronicInvoiceResult>;
-    getInvoiceStatus(providerInvoiceId: string): Promise<ElectronicInvoiceStatusResult>;
-    getRideUrl(accessKey: string): Promise<DocumentUrlResult>;
-    getXmlUrl(accessKey: string, type?: 'authorized' | 'signed' | 'unsigned'): Promise<DocumentUrlResult>;
+    getInvoiceStatus(providerInvoiceId: string, credentials?: TenantBillingCredentials): Promise<ElectronicInvoiceStatusResult>;
+    getRideUrl(accessKey: string, credentials?: TenantBillingCredentials): Promise<DocumentUrlResult>;
+    getXmlUrl(accessKey: string, type?: 'authorized' | 'signed' | 'unsigned', credentials?: TenantBillingCredentials): Promise<DocumentUrlResult>;
 }
 
 export const ELECTRONIC_INVOICE_PROVIDER = Symbol('IElectronicInvoiceProvider');

@@ -551,7 +551,7 @@ export class PrismaReportRepository implements IReportRepository {
             status: { in: ['COMPLETED', 'PARTIAL_REFUND', 'REFUNDED'] as any },
         };
 
-        const [salesAggregate, byBranchRaw, topClientsRaw, repurchaseRaw, appointments] = await Promise.all([
+        const [salesAggregate, byBranchRaw, topClientsRaw, repurchaseRaw, appointments, paymentMethodRaw] = await Promise.all([
             this.prisma.posTicket.aggregate({
                 where: ticketWhere,
                 _sum: { total: true },
@@ -588,6 +588,14 @@ export class PrismaReportRepository implements IReportRepository {
                     vet: { select: { firstName: true, lastName: true } },
                     groomer: { select: { firstName: true, lastName: true } },
                 },
+            }),
+            this.prisma.posPayment.groupBy({
+                by: ['method'],
+                where: {
+                    ticket: ticketWhere,
+                },
+                _sum: { amount: true },
+                _count: true,
             }),
         ]);
 
@@ -667,6 +675,12 @@ export class PrismaReportRepository implements IReportRepository {
         const byProfessional = Array.from(byProfessionalMap.values())
             .sort((a, b) => b.appointments - a.appointments);
 
+        const byPaymentMethod = (paymentMethodRaw as any[]).map((p) => ({
+            method: p.method as string,
+            total: Number((p._sum.amount ?? 0).toFixed(2)),
+            count: p._count as number,
+        })).sort((a, b) => b.total - a.total);
+
         return {
             from,
             to,
@@ -679,6 +693,7 @@ export class PrismaReportRepository implements IReportRepository {
             topClients,
             byBranch,
             byProfessional,
+            byPaymentMethod,
         };
     }
 }
