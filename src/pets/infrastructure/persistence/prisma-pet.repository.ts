@@ -4,6 +4,10 @@ import { IPetRepository, CreatePetData, PetWithDetails, ClinicalHistory } from '
 import { PetEntity } from '../../domain/pet.entity';
 import { sanitizeSortBy } from '../../../common/dto/pagination.dto';
 
+const PET_SORT_FIELDS = [
+    'createdAt', 'updatedAt', 'name', 'species', 'breed', 'sex', 'birthDate', 'weight',
+] as const;
+
 @Injectable()
 export class PrismaPetRepository implements IPetRepository {
     constructor(private readonly prisma: PrismaService) {}
@@ -24,7 +28,7 @@ export class PrismaPetRepository implements IPetRepository {
                 where,
                 skip: query.skip,
                 take: query.take,
-                orderBy: { [sanitizeSortBy(query.sortBy)]: query.sortOrder ?? 'desc' },
+                orderBy: { [sanitizeSortBy(query.sortBy, PET_SORT_FIELDS)]: query.sortOrder ?? 'desc' },
                 include: {
                     owner: { select: { id: true, firstName: true, lastName: true, email: true } },
                 },

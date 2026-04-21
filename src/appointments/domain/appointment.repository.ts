@@ -19,6 +19,7 @@ export interface CreateAppointmentData {
     tenantId: string;
     petId: string;
     vetId?: string;
+    groomerId?: string;
     type: string;
     scheduledAt: string;
     durationMinutes: number;

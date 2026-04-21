@@ -3,6 +3,10 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { IUserRepository, CreateUserData } from '../../domain/user.repository';
 import { sanitizeSortBy } from '../../../common/dto/pagination.dto';
 
+const USER_SORT_FIELDS = [
+    'createdAt', 'updatedAt', 'email', 'firstName', 'lastName', 'role', 'isActive',
+] as const;
+
 const USER_SELECT = {
     id: true,
     tenantId: true,
@@ -30,7 +34,7 @@ export class PrismaUserRepository implements IUserRepository {
                 where: { tenantId },
                 skip: query.skip,
                 take: query.take,
-                orderBy: { [sanitizeSortBy(query.sortBy)]: query.sortOrder || 'desc' },
+                orderBy: { [sanitizeSortBy(query.sortBy, USER_SORT_FIELDS)]: query.sortOrder || 'desc' },
                 select: USER_SELECT,
             }),
             this.prisma.user.count({ where: { tenantId } }),

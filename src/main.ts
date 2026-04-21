@@ -3,8 +3,10 @@ import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { randomUUID } from 'crypto';
-import helmet from 'helmet';
-import compression from 'compression';
+/* eslint-disable @typescript-eslint/no-require-imports */
+const helmet = require('helmet');
+const compression = require('compression');
+/* eslint-enable @typescript-eslint/no-require-imports */
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';

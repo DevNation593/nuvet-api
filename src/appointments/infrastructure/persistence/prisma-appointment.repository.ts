@@ -89,6 +89,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 scheduledAt: new Date(data.scheduledAt),
                 durationMinutes: data.durationMinutes,
                 vetId: data.vetId,
+                groomerId: data.groomerId,
                 notes: data.notes,
                 branchId: data.branchId,
             },

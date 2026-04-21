@@ -6,7 +6,8 @@ export interface CreateVaccinationData {
     vetId: string;
     vaccineName: string;
     manufacturer?: string;
-    lotNumber?: string;
+    batchNumber?: string;
+    dose?: number;
     administeredAt: Date;
     nextDueAt?: Date;
     status: VaccinationStatus;
