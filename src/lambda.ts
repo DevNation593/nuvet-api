@@ -9,14 +9,16 @@ import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import express from 'express';
-import helmet from 'helmet';
-import compression from 'compression';
+import type { Request, Response } from 'express';
+/* eslint-disable @typescript-eslint/no-require-imports */
+const express = require('express');
+const helmet = require('helmet');
+const compression = require('compression');
+/* eslint-enable @typescript-eslint/no-require-imports */
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { TraceInterceptor } from './observability/trace.interceptor';
-import { Request, Response } from 'express';
 
 const expressApp = express();
 
