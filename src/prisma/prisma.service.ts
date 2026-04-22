@@ -2,6 +2,44 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import { PrismaClient } from '@prisma/client';
 import { createTenantExtension } from './prisma-tenant.middleware';
 
+/**
+ * In serverless environments (Vercel), each lambda invocation should reuse the
+ * PrismaClient across warm starts. We cache the instance on `globalThis` so
+ * multiple NestJS module initializations within the same Node process reuse
+ * the same underlying connection pool instead of opening new sockets.
+ */
+const globalForPrisma = globalThis as unknown as {
+    __nuvetPrismaClient?: PrismaClient;
+};
+
+/**
+ * Resolves the database URL from environment variables. Supports an optional
+ * pooled URL (`DATABASE_POOL_URL`) for serverless environments that need
+ * transaction-mode pooling (e.g. PgBouncer). If not set, falls back to
+ * `DATABASE_URL`. Never hardcodes connection strings.
+ */
+function resolveDatabaseUrl(): string | undefined {
+    if (process.env.VERCEL && process.env.DATABASE_POOL_URL) {
+        return process.env.DATABASE_POOL_URL;
+    }
+    return process.env.DATABASE_URL;
+}
+
+function getOrCreatePrismaClient(): PrismaClient {
+    if (!globalForPrisma.__nuvetPrismaClient) {
+        const dbUrl = resolveDatabaseUrl();
+        globalForPrisma.__nuvetPrismaClient = new PrismaClient({
+            log: [
+                { emit: 'event', level: 'query' },
+                { emit: 'stdout', level: 'error' },
+                { emit: 'stdout', level: 'warn' },
+            ],
+            ...(dbUrl ? { datasources: { db: { url: dbUrl } } } : {}),
+        });
+    }
+    return globalForPrisma.__nuvetPrismaClient;
+}
+
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(PrismaService.name);
@@ -14,7 +52,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
                 { emit: 'stdout', level: 'warn' },
             ],
         });
-        const extendedClient = (this as unknown as PrismaClient).$extends(createTenantExtension());
+
+        const cachedClient = getOrCreatePrismaClient();
+        const extendedClient = cachedClient.$extends(createTenantExtension());
         const serviceKeys = new Set<PropertyKey>(['logger', 'onModuleInit', 'onModuleDestroy']);
 
         return new Proxy(this, {
@@ -30,8 +70,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
                         : extendedValue;
                 }
 
-                const baseValue = Reflect.get(target, prop, receiver);
-                return typeof baseValue === 'function' ? baseValue.bind(target) : baseValue;
+                const baseValue = Reflect.get(cachedClient as object, prop, cachedClient);
+                return typeof baseValue === 'function' ? baseValue.bind(cachedClient) : baseValue;
             },
             set(target, prop, value, receiver) {
                 if (serviceKeys.has(prop)) {
@@ -42,21 +82,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
                     return Reflect.set(extendedClient as object, prop, value, extendedClient);
                 }
 
-                return Reflect.set(target, prop, value, receiver);
+                return Reflect.set(cachedClient as object, prop, value, cachedClient);
             },
         }) as unknown as PrismaService;
     }
 
     async onModuleInit() {
-        await this.$connect();
+        const client = getOrCreatePrismaClient();
+        await client.$connect();
         this.logger.log('Database connected');
 
-        // Log slow queries in development
         if (process.env.NODE_ENV === 'development') {
-            if (typeof this.$on === 'function') {
-                (this.$on as unknown as (eventType: 'query', cb: (event: { duration: number; query: string }) => void) => void)(
-                    'query',
-                    (event: { duration: number; query: string }) => {
+            const onFn = (client as unknown as { $on?: (evt: 'query', cb: (e: { duration: number; query: string }) => void) => void }).$on;
+            if (typeof onFn === 'function') {
+                onFn('query', (event) => {
                     if (event.duration > 500) {
                         this.logger.warn(`Slow query (${event.duration}ms): ${event.query}`);
                     }
@@ -66,7 +105,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
 
     async onModuleDestroy() {
-        await this.$disconnect();
+        // In serverless (Vercel), keep the client connected so warm invocations
+        // can reuse the same connection pool. Disconnecting here would force
+        // each warm invocation to re-establish sockets and exhaust Supabase
+        // session-mode slots (EMAXCONNSESSION).
+        if (process.env.VERCEL) {
+            return;
+        }
+
+        const client = getOrCreatePrismaClient();
+        await client.$disconnect();
         this.logger.log('Database disconnected');
     }
 }

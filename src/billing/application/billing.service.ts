@@ -76,10 +76,6 @@ export class BillingService {
             where.createdAt = createdAt;
         }
 
-        if (filter.paymentMethod) {
-            where.payments = { some: { method: filter.paymentMethod } };
-        }
-
         if (filter.search?.trim()) {
             const term = filter.search.trim();
             where.OR = [
