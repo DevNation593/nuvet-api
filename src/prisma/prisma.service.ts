@@ -2,22 +2,10 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import { PrismaClient } from '@prisma/client';
 import { createTenantExtension } from './prisma-tenant.middleware';
 
-/**
- * In serverless environments (Vercel), each lambda invocation should reuse the
- * PrismaClient across warm starts. We cache the instance on `globalThis` so
- * multiple NestJS module initializations within the same Node process reuse
- * the same underlying connection pool instead of opening new sockets.
- */
 const globalForPrisma = globalThis as unknown as {
     __nuvetPrismaClient?: PrismaClient;
 };
 
-/**
- * Resolves the database URL from environment variables. Supports an optional
- * pooled URL (`DATABASE_POOL_URL`) for serverless environments that need
- * transaction-mode pooling (e.g. PgBouncer). If not set, falls back to
- * `DATABASE_URL`. Never hardcodes connection strings.
- */
 function resolveDatabaseUrl(): string | undefined {
     if (process.env.VERCEL && process.env.DATABASE_POOL_URL) {
         return process.env.DATABASE_POOL_URL;
@@ -41,18 +29,10 @@ function getOrCreatePrismaClient(): PrismaClient {
 }
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(PrismaService.name);
 
     constructor() {
-        super({
-            log: [
-                { emit: 'event', level: 'query' },
-                { emit: 'stdout', level: 'error' },
-                { emit: 'stdout', level: 'warn' },
-            ],
-        });
-
         const cachedClient = getOrCreatePrismaClient();
         const extendedClient = cachedClient.$extends(createTenantExtension());
         const serviceKeys = new Set<PropertyKey>(['logger', 'onModuleInit', 'onModuleDestroy']);
@@ -105,10 +85,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
 
     async onModuleDestroy() {
-        // In serverless (Vercel), keep the client connected so warm invocations
-        // can reuse the same connection pool. Disconnecting here would force
-        // each warm invocation to re-establish sockets and exhaust Supabase
-        // session-mode slots (EMAXCONNSESSION).
         if (process.env.VERCEL) {
             return;
         }
@@ -118,3 +94,5 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         this.logger.log('Database disconnected');
     }
 }
+
+export interface PrismaService extends PrismaClient {}
