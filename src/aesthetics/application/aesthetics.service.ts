@@ -39,4 +39,10 @@ export class AestheticsService {
             scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
         });
     }
+
+    async delete(tenantId: string, id: string): Promise<void> {
+        const existing = await this.aestheticRepo.findOne(tenantId, id);
+        if (!existing) throw new NotFoundException('Aesthetic service not found');
+        await this.aestheticRepo.delete(tenantId, id);
+    }
 }

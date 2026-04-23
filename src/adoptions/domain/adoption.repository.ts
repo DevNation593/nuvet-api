@@ -2,7 +2,8 @@ import { AdoptionStatus } from '@nuvet/types';
 
 export interface CreateAdoptionData {
     tenantId: string;
-    petId: string;
+    petId?: string;
+    adoptionAnimalId?: string;
     status: AdoptionStatus;
     notes?: string;
 }
@@ -25,6 +26,7 @@ export interface IAdoptionRepository {
     ): Promise<{ data: unknown[]; total: number }>;
     findOne(tenantId: string, id: string): Promise<unknown | null>;
     petExists(tenantId: string, petId: string): Promise<boolean>;
+    adoptionAnimalExists(tenantId: string, adoptionAnimalId: string): Promise<boolean>;
     create(data: CreateAdoptionData): Promise<unknown>;
     update(tenantId: string, id: string, data: Partial<UpdateAdoptionApplicationData>): Promise<unknown>;
 }

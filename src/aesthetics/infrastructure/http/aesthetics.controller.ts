@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AestheticsService, CreateAestheticDto, UpdateAestheticDto } from '../../application/aesthetics.service';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -41,6 +41,15 @@ export class AestheticsController {
     @ApiOperation({ summary: 'Update aesthetic service status or details' })
     update(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: UpdateAestheticDto) {
         return this.service.update(user.tenantId, id, dto);
+    }
+
+    @Delete(':id')
+    @Roles(UserRole.CLINIC_ADMIN)
+    @Permissions(`${PermissionModule.AESTHETICS}:${PermissionAction.DELETE}`)
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Delete an aesthetic service' })
+    remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+        return this.service.delete(user.tenantId, id);
     }
 }
 

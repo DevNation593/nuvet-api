@@ -51,4 +51,8 @@ export class PrismaAestheticRepository implements IAestheticRepository {
         if (!existing) return null;
         return this.prisma.aestheticService.update({ where: { id }, data });
     }
+
+    async delete(tenantId: string, id: string): Promise<void> {
+        await this.prisma.aestheticService.deleteMany({ where: { id, tenantId } });
+    }
 }

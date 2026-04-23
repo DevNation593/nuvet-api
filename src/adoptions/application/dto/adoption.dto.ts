@@ -3,10 +3,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AdoptionStatus } from '@nuvet/types';
 
 export class CreateAdoptionDto {
-    @ApiProperty({ description: 'Pet to put up for adoption' })
+    @ApiPropertyOptional({ description: 'Pet (client-owned) to put up for adoption' })
+    @IsOptional()
     @IsString()
-    @IsNotEmpty()
-    petId!: string;
+    petId?: string;
+
+    @ApiPropertyOptional({ description: 'Adoption animal to put up for adoption' })
+    @IsOptional()
+    @IsString()
+    adoptionAnimalId?: string;
+
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
