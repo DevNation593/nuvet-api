@@ -24,11 +24,12 @@ export class CreateClientDto {
     @IsNotEmpty()
     @MaxLength(50)
     lastName!: string;
-    @ApiProperty({ example: 'ClientPass123!', minLength: 8 })
+    @ApiPropertyOptional({ example: 'ClientPass123!', description: 'Si no se envía, se genera automáticamente.' })
+    @IsOptional()
     @IsString()
     @MinLength(8)
     @MaxLength(64)
-    password!: string;
+    password?: string;
     @ApiPropertyOptional({ example: '+593999999999' })
     @IsOptional()
     @IsString()
