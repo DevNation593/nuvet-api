@@ -21,6 +21,7 @@ export class PrismaAdoptionRepository implements IAdoptionRepository {
                 orderBy: { createdAt: 'desc' },
                 include: {
                     pet: { select: { id: true, name: true, species: true, breed: true, photoUrl: true } },
+                    adoptionAnimal: { select: { id: true, name: true, species: true, breed: true, photoUrl: true } },
                 },
             }),
             this.prisma.adoption.count({ where }),
@@ -31,7 +32,7 @@ export class PrismaAdoptionRepository implements IAdoptionRepository {
     async findOne(tenantId: string, id: string): Promise<unknown | null> {
         return this.prisma.adoption.findFirst({
             where: { id, tenantId },
-            include: { pet: true },
+            include: { pet: true, adoptionAnimal: true },
         });
     }
 
@@ -43,10 +44,18 @@ export class PrismaAdoptionRepository implements IAdoptionRepository {
         return Boolean(pet);
     }
 
+    async adoptionAnimalExists(tenantId: string, adoptionAnimalId: string): Promise<boolean> {
+        const animal = await this.prisma.adoptionAnimal.findFirst({
+            where: { id: adoptionAnimalId, tenantId },
+            select: { id: true },
+        });
+        return Boolean(animal);
+    }
+
     async create(data: CreateAdoptionData): Promise<unknown> {
         return this.prisma.adoption.create({
             data,
-            include: { pet: true },
+            include: { pet: true, adoptionAnimal: true },
         });
     }
 

@@ -31,7 +31,8 @@ export class ClientsService {
         const existing = await this.clientRepo.findByEmail(tenantId, dto.email.toLowerCase());
         if (existing) throw new ConflictException('Email already registered in this clinic');
 
-        const passwordHash = await bcrypt.hash(dto.password, 12);
+        const rawPassword = dto.password ?? (crypto.randomUUID().replace(/-/g, '').slice(0, 16) + '!Nv1');
+        const passwordHash = await bcrypt.hash(rawPassword, 12);
 
         return this.clientRepo.create({
             tenantId,

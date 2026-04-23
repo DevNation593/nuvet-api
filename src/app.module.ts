@@ -24,6 +24,7 @@ import { SurgeriesModule } from './surgeries/surgeries.module';
 import { StoreModule } from './store/store.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { AdoptionsModule } from './adoptions/adoptions.module';
+import { AdoptionAnimalsModule } from './adoption-animals/adoption-animals.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { StorageModule } from './storage/storage.module';
@@ -80,6 +81,7 @@ import { redisConfig } from './config/redis.config';
         StoreModule,
         InventoryModule,
         AdoptionsModule,
+        AdoptionAnimalsModule,
         NotificationsModule,
         ReportsModule,
         FilesModule,

@@ -101,7 +101,7 @@ export interface CreateClientRequest {
     email: string;
     firstName: string;
     lastName: string;
-    password: string;
+    password?: string;
     phone?: string;
 }
 
@@ -232,7 +232,8 @@ export interface UpdateSurgeryRequest extends Partial<CreateSurgeryRequest> {
 }
 
 export interface CreateAdoptionRequest {
-    petId: string;
+    petId?: string;
+    adoptionAnimalId?: string;
     notes?: string;
 }
 
