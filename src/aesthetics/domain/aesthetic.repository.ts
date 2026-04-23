@@ -21,6 +21,7 @@ export interface IAestheticRepository {
     create(data: CreateAestheticData): Promise<unknown>;
     update(tenantId: string, id: string, data: Partial<Omit<CreateAestheticData, 'tenantId'>>): Promise<unknown>;
     findOne(tenantId: string, id: string): Promise<unknown | null>;
+    delete(tenantId: string, id: string): Promise<void>;
 }
 
 export const AESTHETIC_REPOSITORY = Symbol('IAestheticRepository');

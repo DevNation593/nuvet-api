@@ -152,6 +152,7 @@ model Tenant {
   payments           Payment[]
   orderItems         OrderItem[]
   adoptions          Adoption[]
+  adoptionAnimals    AdoptionAnimal[]
   notifications      Notification[]
   AuditLog           AuditLog[]
   clinicHours             ClinicHours[]
@@ -741,25 +742,53 @@ model OrderItem {
   @@map("order_items")
 }
 
-model Adoption {
-  id             String        @id @default(uuid())
-  tenantId       String
-  petId          String
-  applicantId    String?
-  status         AdoptionStatus @default(AVAILABLE)
-  applicantName  String?
-  applicantEmail String?
-  applicantPhone String?
-  notes          String?
-  rejectionReason String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+model AdoptionAnimal {
+  id            String     @id @default(uuid())
+  tenantId      String
+  name          String
+  species       PetSpecies
+  breed         String?
+  sex           PetSex
+  birthDate     DateTime?
+  color         String?
+  weight        Float?
+  photoUrl      String?
+  description   String?
+  isNeutered    Boolean    @default(false)
+  notes         String?
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  pet    Pet    @relation(fields: [petId], references: [id])
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  adoptions Adoption[]
+
+  @@index([tenantId])
+  @@map("adoption_animals")
+}
+
+model Adoption {
+  id                String         @id @default(uuid())
+  tenantId          String
+  petId             String?
+  adoptionAnimalId  String?
+  applicantId       String?
+  status            AdoptionStatus @default(AVAILABLE)
+  applicantName     String?
+  applicantEmail    String?
+  applicantPhone    String?
+  notes             String?
+  rejectionReason   String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pet             Pet?            @relation(fields: [petId], references: [id])
+  adoptionAnimal  AdoptionAnimal? @relation(fields: [adoptionAnimalId], references: [id])
 
   @@index([tenantId])
   @@index([petId])
+  @@index([adoptionAnimalId])
   @@index([status])
   @@map("adoptions")
 }
