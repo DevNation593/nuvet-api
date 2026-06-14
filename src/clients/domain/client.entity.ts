@@ -10,6 +10,8 @@ export class ClientEntity {
         public isActive: boolean,
         public readonly createdAt: Date,
         public updatedAt: Date,
+        public identification: string | null = null,
+        public billingAddress: string | null = null,
     ) {}
 
     get fullName(): string {

@@ -26,7 +26,7 @@ export interface CreateAttachmentData {
 export interface IMedicalRecordRepository {
     findAll(
         tenantId: string,
-        petId: string,
+        petId: string | undefined,
         query: { skip: number; take: number },
     ): Promise<{ data: unknown[]; total: number }>;
     findOne(tenantId: string, id: string): Promise<unknown | null>;

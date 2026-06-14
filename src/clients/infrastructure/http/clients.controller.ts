@@ -22,6 +22,16 @@ export class ClientsController {
         return this.service.findAll(user.tenantId, query);
     }
 
+    @Get('by-identification/:identification')
+    @Permissions(`${PermissionModule.CLIENTS}:${PermissionAction.READ}`)
+    @ApiOperation({ summary: 'Find a client by identification (cedula/RUC) for billing autofill' })
+    findByIdentification(
+        @CurrentUser() user: JwtPayload,
+        @Param('identification') identification: string,
+    ) {
+        return this.service.findByIdentification(user.tenantId, identification);
+    }
+
     @Get(':id')
     @Permissions(`${PermissionModule.CLIENTS}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'Get one client by id' })

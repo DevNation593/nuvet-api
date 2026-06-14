@@ -59,10 +59,16 @@ export class PrismaSurgeryRepository implements ISurgeryRepository {
     async update(
         tenantId: string,
         id: string,
-        data: Partial<Omit<CreateSurgeryData, 'tenantId' | 'petId' | 'vetId' | 'type'>>,
+        data: Partial<Omit<CreateSurgeryData, 'tenantId'>>,
     ): Promise<unknown> {
         const existing = await this.prisma.surgery.findFirst({ where: { id, tenantId }, select: { id: true } });
         if (!existing) return null;
         return this.prisma.surgery.update({ where: { id }, data: data as any });
+    }
+
+    async delete(tenantId: string, id: string): Promise<void> {
+        const existing = await this.prisma.surgery.findFirst({ where: { id, tenantId }, select: { id: true } });
+        if (!existing) return;
+        await this.prisma.surgery.delete({ where: { id } });
     }
 }
