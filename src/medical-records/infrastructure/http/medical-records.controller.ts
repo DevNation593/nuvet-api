@@ -4,13 +4,13 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
-import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { MedicalRecordsService } from '../../application/medical-records.service';
 import {
     CreateMedicalRecordDto,
     UpdateMedicalRecordDto,
     RegisterAttachmentDto,
     RegisterClinicalDocumentDto,
+    MedicalRecordsQueryDto,
 } from '../../application/dto/medical-record.dto';
 
 @ApiTags('medical-records')
@@ -23,8 +23,8 @@ export class MedicalRecordsController {
     @Get()
     @Permissions(`${PermissionModule.MEDICAL_RECORDS}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'List medical records (optionally filtered by petId)' })
-    findAll(@CurrentUser() user: JwtPayload, @Query('petId') petId: string | undefined, @Query() query: PaginationQueryDto) {
-        const normalizedPetId = petId && petId.trim() ? petId.trim() : undefined;
+    findAll(@CurrentUser() user: JwtPayload, @Query() query: MedicalRecordsQueryDto) {
+        const normalizedPetId = query.petId && query.petId.trim() ? query.petId.trim() : undefined;
         return this.service.findAll(user.tenantId, normalizedPetId, query);
     }
 

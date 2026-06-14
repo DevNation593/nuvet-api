@@ -104,7 +104,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         if (process.env.NODE_ENV === 'development') {
             const onFn = (client as unknown as { $on?: (evt: 'query', cb: (e: { duration: number; query: string }) => void) => void }).$on;
             if (typeof onFn === 'function') {
-                onFn('query', (event) => {
+                onFn.call(client, 'query', (event) => {
                     if (event.duration > 500) {
                         this.logger.warn(`Slow query (${event.duration}ms): ${event.query}`);
                     }
