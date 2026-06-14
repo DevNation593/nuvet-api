@@ -5,6 +5,15 @@ import {
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { DiscountType, DiscountTargetType } from '@nuvet/types';
+import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
+
+export class DiscountsQueryDto extends PaginationQueryDto {
+    @ApiPropertyOptional({ description: 'Filter only active discounts', type: Boolean })
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    onlyActive?: boolean;
+}
 
 export class CreateDiscountDto {
     @ApiProperty({ example: 'Descuento de verano' })

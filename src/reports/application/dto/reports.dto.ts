@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsDateString, IsEnum, IsInt, Min, Max, IsNotEmpty } from 'class-validator';
+import { IsOptional, IsString, IsDateString, IsEnum, IsInt, Min, Max, IsNotEmpty, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { AppointmentType } from '@nuvet/types';
@@ -89,6 +89,12 @@ export class PosDiscountUsageReportQueryDto {
     @IsOptional()
     @IsString()
     discountId?: string;
+
+    @ApiPropertyOptional({ description: 'Filter only active discounts', default: true })
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    onlyActive?: boolean;
 }
 
 export class InventoryKardexQueryDto {
