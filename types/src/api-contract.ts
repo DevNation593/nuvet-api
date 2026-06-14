@@ -103,6 +103,8 @@ export interface CreateClientRequest {
     lastName: string;
     password?: string;
     phone?: string;
+    identification?: string;
+    billingAddress?: string;
 }
 
 export interface UpdateClientRequest {
@@ -111,6 +113,8 @@ export interface UpdateClientRequest {
     lastName?: string;
     password?: string;
     phone?: string;
+    identification?: string;
+    billingAddress?: string;
     isActive?: boolean;
 }
 

@@ -53,4 +53,9 @@ export class SurgeriesService {
             consentSignedAt: dto.consentSignedAt ? new Date(dto.consentSignedAt) : undefined,
         });
     }
+
+    async remove(tenantId: string, id: string) {
+        await this.findOne(tenantId, id);
+        await this.surgeryRepo.delete(tenantId, id);
+    }
 }

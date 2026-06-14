@@ -226,6 +226,7 @@ model User {
   role            UserRole
   identification  String?
   phone           String?
+  billingAddress  String?
   avatarUrl    String?
   isActive     Boolean  @default(true)
   pushToken       String?

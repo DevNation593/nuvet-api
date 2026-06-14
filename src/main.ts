@@ -33,8 +33,8 @@ async function bootstrap() {
 
     // ── Body size limits ──────────────────────────────────────────────────────
     const { json, urlencoded } = await import('express');
-    app.use(json({ limit: '2mb' }));
-    app.use(urlencoded({ extended: true, limit: '2mb' }));
+    app.use(json({ limit: '8mb' }));
+    app.use(urlencoded({ extended: true, limit: '8mb' }));
 
     app.use((request: any, response: any, next: () => void) => {
         const requestId = request.headers['x-request-id'] ?? randomUUID();
