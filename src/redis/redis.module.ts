@@ -12,17 +12,14 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => {
                 const logger = new Logger('RedisModule');
-                const host = configService.get<string>('redis.host');
+                const url = configService.get<string>('redis.url');
 
-                if (!host) {
-                    logger.warn('REDIS_HOST not configured — using in-memory noop client');
+                if (!url) {
+                    logger.warn('REDIS_URL not configured — using in-memory noop client');
                     return createNoopRedis();
                 }
 
-                const client = new Redis({
-                    host,
-                    port: configService.get<number>('redis.port', 6379),
-                    password: configService.get<string>('redis.password'),
+                const client = new Redis(url, {
                     maxRetriesPerRequest: 3,
                     lazyConnect: false,
                     retryStrategy(times) {

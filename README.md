@@ -28,9 +28,7 @@ Backend multi-tenant para la plataforma NuVet, construido con NestJS, Prisma y P
 
    DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<db>
 
-   REDIS_HOST=localhost
-   REDIS_PORT=6379
-   REDIS_PASSWORD=<redis_password>
+   REDIS_URL=redis://:password@localhost:6379
 
    JWT_ACCESS_SECRET=<jwt_access_secret>
    JWT_REFRESH_SECRET=<jwt_refresh_secret>
