@@ -9,7 +9,7 @@
   "scripts": {
     "build:types": "tsc -p types/tsconfig.json",
     "postinstall": "prisma generate",
-    "build": "pnpm run build:types && nest build && nest build --webpack --webpackPath webpack-lambda.config.js && node scripts/prepare-vercel.js",
+    "build": "pnpm run build:types && pnpm prisma:migrate:deploy && nest build && nest build --webpack --webpackPath webpack-lambda.config.js && node scripts/prepare-vercel.js",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "NODE_ENV=production node dist/main.js",

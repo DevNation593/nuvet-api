@@ -10,15 +10,14 @@ import {
     HttpCode,
     HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { DiscountsService } from '../../application/discounts.service';
-import { CreateDiscountDto, UpdateDiscountDto, ApplyDiscountDto } from '../../application/dto/discount.dto';
+import { CreateDiscountDto, UpdateDiscountDto, ApplyDiscountDto, DiscountsQueryDto } from '../../application/dto/discount.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { HttpCache } from '../../../common/decorators/http-cache.decorator';
 import { UserRole, JwtPayload, PermissionModule, PermissionAction } from '@nuvet/types';
-import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
 @ApiTags('discounts')
 @ApiBearerAuth('JWT')
@@ -40,14 +39,11 @@ export class DiscountsController {
     @Get()
     @Permissions(`${PermissionModule.DISCOUNTS}:${PermissionAction.READ}`)
     @ApiOperation({ summary: 'Listar todos los descuentos (con paginación)' })
-    @ApiQuery({ name: 'onlyActive', required: false, type: Boolean })
     findAll(
         @CurrentUser() user: JwtPayload,
-        @Query() query: PaginationQueryDto,
-        @Query('onlyActive') onlyActive?: string,
+        @Query() query: DiscountsQueryDto,
     ) {
-        const active = onlyActive !== undefined ? onlyActive === 'true' : undefined;
-        return this.service.findAll(user.tenantId, query, active);
+        return this.service.findAll(user.tenantId, query, query.onlyActive);
     }
 
     @Get('active')

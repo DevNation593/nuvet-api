@@ -1,8 +1,22 @@
 import {
-    IsNotEmpty, IsString, IsOptional, IsNumber, IsPositive, IsInt, Min, IsEnum,
+    IsNotEmpty, IsString, IsOptional, IsNumber, IsPositive, IsInt, Min, IsEnum, IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
+
+export class MedicalRecordsQueryDto extends PaginationQueryDto {
+    @ApiPropertyOptional({ description: 'Filter by pet ID' })
+    @IsOptional()
+    @IsString()
+    petId?: string;
+
+    @ApiPropertyOptional({ description: 'Filter only active records', default: true })
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    onlyActive?: boolean;
+}
 
 export class CreateMedicalRecordDto {
     @ApiProperty() @IsString() @IsNotEmpty() petId!: string;
