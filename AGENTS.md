@@ -253,7 +253,7 @@ export class {Domain}Module {}
 
 See [README.md](README.md) for full list. Key ones:
 - `DATABASE_URL` – PostgreSQL connection
-- `REDIS_HOST`, `REDIS_PORT` – Redis config
+- `REDIS_URL` – Redis connection URL (e.g., `redis://:password@host:6379`)
 - `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` – Auth tokens
 - `S3_ENDPOINT`, `S3_ACCESS_KEY` – MinIO/S3 storage
 - `BILLING_FAKTUR_*` – Ecuador tax system integration
