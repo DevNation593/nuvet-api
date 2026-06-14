@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
@@ -22,12 +22,10 @@ export class MedicalRecordsController {
 
     @Get()
     @Permissions(`${PermissionModule.MEDICAL_RECORDS}:${PermissionAction.READ}`)
-    @ApiOperation({ summary: 'List medical records for a pet' })
-    findAll(@CurrentUser() user: JwtPayload, @Query('petId') petId: string, @Query() query: PaginationQueryDto) {
-        if (!petId || !petId.trim()) {
-            throw new BadRequestException('petId es requerido');
-        }
-        return this.service.findAll(user.tenantId, petId, query);
+    @ApiOperation({ summary: 'List medical records (optionally filtered by petId)' })
+    findAll(@CurrentUser() user: JwtPayload, @Query('petId') petId: string | undefined, @Query() query: PaginationQueryDto) {
+        const normalizedPetId = petId && petId.trim() ? petId.trim() : undefined;
+        return this.service.findAll(user.tenantId, normalizedPetId, query);
     }
 
     @Post()

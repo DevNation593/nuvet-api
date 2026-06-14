@@ -12,9 +12,11 @@ export class MedicalRecordsService {
         private storage: StorageService,
     ) { }
 
-    async findAll(tenantId: string, petId: string, query: PaginationQueryDto) {
-        const petExists = await this.medicalRecordRepo.petExists(tenantId, petId);
-        if (!petExists) throw new NotFoundException('Pet not found');
+    async findAll(tenantId: string, petId: string | undefined, query: PaginationQueryDto) {
+        if (petId) {
+            const petExists = await this.medicalRecordRepo.petExists(tenantId, petId);
+            if (!petExists) throw new NotFoundException('Pet not found');
+        }
 
         const { skip, take, page, limit } = buildPaginationArgs(query);
         const { data, total } = await this.medicalRecordRepo.findAll(tenantId, petId, { skip, take });

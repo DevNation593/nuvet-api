@@ -15,6 +15,7 @@ import {
     ExpiringStockResult,
 } from '../../domain/report.repository';
 import { AppointmentType, OrderStatus } from '@nuvet/types';
+import { buildDateRange } from '../../../common/utils/date-range';
 
 @Injectable()
 export class PrismaReportRepository implements IReportRepository {
@@ -29,7 +30,7 @@ export class PrismaReportRepository implements IReportRepository {
     ): Promise<AppointmentsReportResult> {
         const where: Record<string, unknown> = {
             tenantId,
-            scheduledAt: { gte: new Date(from), lte: new Date(to + 'T23:59:59Z') },
+            scheduledAt: buildDateRange(from, to),
             ...(vetId && { vetId }),
             ...(type && { type }),
         };
@@ -58,7 +59,7 @@ export class PrismaReportRepository implements IReportRepository {
         from: string,
         to: string,
     ): Promise<RevenueReportResult> {
-        const dateRange = { gte: new Date(from), lte: new Date(to + 'T23:59:59Z') };
+        const dateRange = buildDateRange(from, to);
         const where = {
             tenantId,
             status: OrderStatus.COMPLETED as any,
@@ -184,7 +185,7 @@ export class PrismaReportRepository implements IReportRepository {
         const tickets = await this.prisma.posTicket.findMany({
             where: {
                 tenantId,
-                createdAt: { gte: new Date(from), lte: new Date(`${to}T23:59:59Z`) },
+                createdAt: buildDateRange(from, to),
                 ...(status ? { status: status as any } : {}),
             },
             orderBy: { createdAt: 'desc' },
@@ -237,10 +238,7 @@ export class PrismaReportRepository implements IReportRepository {
     ): Promise<PosDiscountUsageReportResult> {
         const where: any = {
             tenantId,
-            createdAt: {
-                gte: new Date(from),
-                lte: new Date(`${to}T23:59:59Z`),
-            },
+            createdAt: buildDateRange(from, to),
             posTicketId: { not: null },
             ...(discountId ? { discountId } : {}),
             ...(branchId ? { posTicket: { is: { branchId } } } : {}),
@@ -342,10 +340,7 @@ export class PrismaReportRepository implements IReportRepository {
             where.productId = filters.productId;
         }
         if (filters.from || filters.to) {
-            where.createdAt = {
-                ...(filters.from ? { gte: new Date(filters.from) } : {}),
-                ...(filters.to ? { lte: new Date(`${filters.to}T23:59:59Z`) } : {}),
-            };
+            where.createdAt = buildDateRange(filters.from, filters.to);
         }
 
         const movements = await this.prisma.stockMovement.findMany({
@@ -544,7 +539,7 @@ export class PrismaReportRepository implements IReportRepository {
         from: string,
         to: string,
     ): Promise<ExecutiveKpisResult> {
-        const range = { gte: new Date(from), lte: new Date(`${to}T23:59:59Z`) };
+        const range = buildDateRange(from, to);
         const ticketWhere = {
             tenantId,
             createdAt: range,

@@ -11,6 +11,8 @@ const CLIENT_SELECT = {
     firstName: true,
     lastName: true,
     phone: true,
+    identification: true,
+    billingAddress: true,
     isActive: true,
     createdAt: true,
     updatedAt: true,
@@ -54,20 +56,18 @@ export class PrismaClientRepository implements IClientRepository {
         return client;
     }
 
+    async findByIdentification(tenantId: string, identification: string): Promise<ClientEntity | null> {
+        const client = await this.prisma.user.findFirst({
+            where: { tenantId, role: UserRole.CLIENT, identification },
+            select: CLIENT_SELECT,
+        });
+        return client as ClientEntity | null;
+    }
+
     async create(data: CreateClientData): Promise<ClientEntity> {
         const client = await this.prisma.user.create({
             data: { ...data, role: UserRole.CLIENT },
-            select: {
-                id: true,
-                tenantId: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                phone: true,
-                isActive: true,
-                createdAt: true,
-                updatedAt: true,
-            },
+            select: CLIENT_SELECT,
         });
         return client as unknown as ClientEntity;
     }

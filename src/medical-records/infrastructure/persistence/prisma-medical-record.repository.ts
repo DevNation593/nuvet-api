@@ -12,17 +12,20 @@ export class PrismaMedicalRecordRepository implements IMedicalRecordRepository {
 
     async findAll(
         tenantId: string,
-        petId: string,
+        petId: string | undefined,
         query: { skip: number; take: number },
     ): Promise<{ data: unknown[]; total: number }> {
-        const where = { tenantId, petId };
+        const where = petId ? { tenantId, petId } : { tenantId };
         const [data, total] = await Promise.all([
             this.prisma.medicalRecord.findMany({
                 where,
                 skip: query.skip,
                 take: query.take,
                 orderBy: { createdAt: 'desc' },
-                include: { vet: { select: { id: true, firstName: true, lastName: true } } },
+                include: {
+                    vet: { select: { id: true, firstName: true, lastName: true } },
+                    pet: { select: { id: true, name: true, species: true } },
+                },
             }),
             this.prisma.medicalRecord.count({ where }),
         ]);
