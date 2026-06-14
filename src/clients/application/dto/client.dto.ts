@@ -34,6 +34,16 @@ export class CreateClientDto {
     @IsOptional()
     @IsString()
     phone?: string;
+    @ApiPropertyOptional({ example: '1712345678', description: 'Cédula o RUC para facturación' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(20)
+    identification?: string;
+    @ApiPropertyOptional({ example: 'Av. Amazonas N34-45 y Atahualpa, Quito' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(255)
+    billingAddress?: string;
 }
 
 export class UpdateClientDto extends PartialType(CreateClientDto) {

@@ -27,6 +27,12 @@ export class ClientsService {
         return client;
     }
 
+    async findByIdentification(tenantId: string, identification: string) {
+        const normalized = identification.trim();
+        if (!normalized) return null;
+        return this.clientRepo.findByIdentification(tenantId, normalized);
+    }
+
     async create(tenantId: string, dto: CreateClientDto) {
         const existing = await this.clientRepo.findByEmail(tenantId, dto.email.toLowerCase());
         if (existing) throw new ConflictException('Email already registered in this clinic');
@@ -41,6 +47,8 @@ export class ClientsService {
             firstName: dto.firstName,
             lastName: dto.lastName,
             phone: dto.phone,
+            identification: dto.identification?.trim() || undefined,
+            billingAddress: dto.billingAddress?.trim() || undefined,
         });
     }
 
