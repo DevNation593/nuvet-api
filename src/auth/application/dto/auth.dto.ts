@@ -134,4 +134,3 @@ export class UpdateProfileDto {
     @MaxLength(30)
     phone?: string;
 }
-

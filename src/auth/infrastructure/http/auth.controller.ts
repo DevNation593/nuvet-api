@@ -92,6 +92,8 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth('JWT')
     @ApiOperation({ summary: 'Logout (invalidate refresh token)' })
+    @ApiResponse({ status: 200, description: 'Logged out successfully' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     logout(
         @CurrentUser() user: JwtPayload,
         @Body() body: { refreshToken?: string },
