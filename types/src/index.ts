@@ -30,6 +30,8 @@ export enum PermissionModule {
   BRANCHES = 'branches',
   POS = 'pos',
   BILLING = 'billing',
+  // Fase 1: pasaporte médico digital + consentimiento entre clínicas.
+  PASSPORT = 'passport',
 }
 
 export enum PermissionAction {

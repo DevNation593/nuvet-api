@@ -117,12 +117,54 @@ enum DiscountType {
   BUY_X_GET_Y  // ej: 2x1, 3x2 (compra X, lleva Y gratis)
 }
 
+// ─── Pasaporte médico · consentimiento entre clínicas ─────────────────────────
+
+enum ConsentStatus {
+  PENDING   // creado pero aún no activado (reservado para futuro flujo con confirmación)
+  GRANTED   // activo: la clínica destino puede leer
+  REVOKED   // revocado por el dueño; terminal
+  EXPIRED   // pasó la fecha de expiración; terminal
+}
+
+enum ConsentScope {
+  PASSPORT_READ        // lectura del pasaporte agregado (recomendado por defecto)
+  MEDICAL_RECORDS_READ // lectura de medical records crudos (solo staff veterinario)
+}
+
+enum ConsentAuditAction {
+  CREATED
+  GRANTED
+  REVOKED
+  ACCESSED
+  SHARE_CREATED
+  SHARE_REVOKED
+  SHARE_ACCESSED
+  EXPIRED
+}
+
 enum DiscountTargetType {
   PRODUCT           // producto específico
   PRODUCT_CATEGORY  // todos los productos de una categoría
   SERVICE           // tipo de servicio (AppointmentType)
   ALL_PRODUCTS      // todos los productos
   ALL_SERVICES      // todos los servicios
+}
+
+enum ConsentTokenScope {
+  READ   // lectura del pasaporte y registros médicos del/los pet(s) autorizados
+  FULL   // lectura + acciones permitidas (p.ej. agendar cita, crear orden); uso futuro
+}
+
+enum ConsentTokenStatus {
+  ACTIVE    // token vigente, puede ser usado para acceder
+  REVOKED   // revocado por el dueño; terminal
+  EXPIRED   // pasó la fecha de expiración; terminal
+}
+
+enum ConsentAccessAction {
+  VALIDATE  // el portador del token intentó validar/canjearlo
+  READ      // lectura efectiva de datos protegidos
+  REVOKE    // acción administrativa de revocación
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -165,6 +207,11 @@ model Tenant {
   cashRegisters          CashRegister[]
   posTickets             PosTicket[]
   posRefunds             PosRefund[]
+  petConsents            PetConsent[]    @relation("PetConsentTenant")
+  petConsentShares       PetConsentShare[] @relation("PetConsentShareTenant")
+  petConsentAudits       PetConsentAudit[] @relation("PetConsentAuditTenant")
+  consentTokens          ConsentToken[]  @relation("ConsentTokenTenant")
+  consentAccessLogs      ConsentAccessLog[] @relation("ConsentAccessLogTenant")
 
   @@map("tenants")
 }
@@ -256,6 +303,11 @@ model User {
   posTicketsCreated       PosTicket[]     @relation("PosTicketCreatedBy")
   posClientTickets        PosTicket[]     @relation("PosTicketClient")
   posRefunds              PosRefund[]     @relation("PosRefundBy")
+  ownedConsents           PetConsent[]    @relation("PetConsentOwner")
+  ownedConsentShares      PetConsentShare[] @relation("PetConsentShareOwner")
+  consentAudits           PetConsentAudit[] @relation("PetConsentAuditActor")
+  ownedConsentTokens      ConsentToken[]      @relation("ConsentTokenOwner")
+  accessedConsentLogs     ConsentAccessLog[]  @relation("ConsentAccessLogAccessedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -332,6 +384,8 @@ model Pet {
   aestheticServices AestheticService[]
   surgeries       Surgery[]
   adoptions       Adoption[]
+  consents        PetConsent[]
+  consentShares   PetConsentShare[]
 
   @@index([tenantId])
   @@index([ownerId])
@@ -792,6 +846,144 @@ model Adoption {
   @@index([adoptionAnimalId])
   @@index([status])
   @@map("adoptions")
+}
+
+// ─── Pasaporte médico · consentimiento entre clínicas (Fase 1) ────────────────
+
+model PetConsent {
+  id               String         @id @default(uuid())
+  tenantId         String         // source tenant (la clínica dueña del expediente)
+  sourceTenantId   String         // denormalizado; coincide con tenantId
+  petId            String
+  ownerId          String         // User con rol CLIENT que concede el acceso
+  targetTenantId   String         // tenant que recibe acceso de lectura
+  targetClinicName String?        // capturado al momento del grant (sobrevive renames)
+  status           ConsentStatus  @default(GRANTED)
+  scopes           ConsentScope[] @default([PASSPORT_READ])
+  message          String?        // nota opcional del dueño
+  grantedAt        DateTime       @default(now())
+  expiresAt        DateTime?      // null = sin expiración
+  revokedAt        DateTime?
+  revokeReason     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  pet    Pet    @relation(fields: [petId], references: [id], onDelete: Cascade)
+  owner  User   @relation("PetConsentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation("PetConsentTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  audits PetConsentAudit[]
+
+  @@index([tenantId])
+  @@index([petId])
+  @@index([ownerId])
+  @@index([targetTenantId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([petId, targetTenantId, status])
+  @@map("pet_consents")
+}
+
+model PetConsentShare {
+  id              String    @id @default(uuid())
+  tenantId        String    // source tenant
+  petId           String
+  ownerId         String
+  token           String    @unique
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  lastAccessedAt  DateTime?
+  accessCount     Int       @default(0)
+  createdAt       DateTime  @default(now())
+
+  pet    Pet    @relation(fields: [petId], references: [id], onDelete: Cascade)
+  owner  User   @relation("PetConsentShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation("PetConsentShareTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  audits PetConsentAudit[]
+
+  @@index([tenantId])
+  @@index([petId])
+  @@index([ownerId])
+  @@index([expiresAt])
+  @@map("pet_consent_shares")
+}
+
+model PetConsentAudit {
+  id              String             @id @default(uuid())
+  tenantId        String             // source tenant (contexto de auditoría)
+  consentId       String?            // nulo para acciones sobre share
+  shareId         String?
+  action          ConsentAuditAction
+  actorUserId     String?
+  actorTenantId   String?
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  createdAt       DateTime           @default(now())
+
+  consent PetConsent?      @relation(fields: [consentId], references: [id], onDelete: Cascade)
+  share   PetConsentShare? @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  tenant  Tenant @relation("PetConsentAuditTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  actor   User?  @relation("PetConsentAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([consentId])
+  @@index([shareId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("pet_consent_audits")
+}
+
+// ─── Consent tokens (Fase 2) ──────────────────────────────────────────────────
+// Token emitido por el dueño de la mascota para autorizar acceso a terceros
+// identificados por email (no requieren cuenta en la misma clínica).
+// Modelo complementario a PetConsent (que es clinic-to-clinic).
+
+model ConsentToken {
+  id              String             @id @default(uuid())
+  tenantId        String             // source tenant (clínica dueña del expediente)
+  ownerUserId     String             // User con rol CLIENT que emite el token
+  granteeEmail    String             // email del tercero autorizado
+  granteeTenantId String?            // tenant del tercero si ya es cliente conocido (cross-tenant)
+  scope           ConsentTokenScope  @default(READ)
+  petIds          String[]           // ids de Pet incluidos en la autorización
+  status          ConsentTokenStatus @default(ACTIVE)
+  expiresAt       DateTime           // fecha límite de validez
+  createdAt       DateTime           @default(now())
+  revokedAt       DateTime?          // timestamp de revocación si aplica
+  auditReason     String?            // motivo capturado al crear/revocar (libre)
+
+  owner      User               @relation("ConsentTokenOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  tenant     Tenant             @relation("ConsentTokenTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  accessLogs ConsentAccessLog[]
+
+  @@index([tenantId, ownerUserId])
+  @@index([tenantId, granteeEmail])
+  @@index([tenantId, status])
+  @@index([expiresAt])
+  @@map("consent_tokens")
+}
+
+model ConsentAccessLog {
+  id                 String             @id @default(uuid())
+  tenantId           String             // source tenant (contexto de auditoría)
+  consentTokenId     String
+  accessedByUserId   String             // User que intentó/ejecutó la acción
+  accessedByTenantId String?            // tenant del actor; null si no pertenece a ningún tenant conocido
+  action             ConsentAccessAction
+  ipAddress          String?
+  userAgent          String?
+  createdAt          DateTime           @default(now())
+
+  consentToken ConsentToken @relation(fields: [consentTokenId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation("ConsentAccessLogTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  accessedBy   User         @relation("ConsentAccessLogAccessedBy", fields: [accessedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([consentTokenId])
+  @@index([accessedByUserId])
+  @@index([tenantId, action])
+  @@index([createdAt])
+  @@map("consent_access_logs")
 }
 
 model Notification {

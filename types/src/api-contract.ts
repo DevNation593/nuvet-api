@@ -332,3 +332,141 @@ export interface AuthSession {
 export interface LoginResponse extends AuthSession {
     tenant?: ApiAuthTenant;
 }
+
+// ─── Fase 1 · Pasaporte médico + consentimiento interclínico ──────────────────
+
+/**
+ * Los nombres de los enums coinciden con los valores que produce el cliente
+ * Prisma del backend (`@prisma/client`). Usar los literales aquí garantiza
+ * que web/mobile consuman exactamente lo que la API serializa, sin
+ * dependencia de runtime del Prisma client.
+ */
+export type ApiConsentStatus = 'PENDING' | 'GRANTED' | 'REVOKED' | 'EXPIRED';
+export type ApiConsentScope = 'PASSPORT_READ' | 'MEDICAL_RECORDS_READ';
+export type ApiConsentAuditAction =
+    | 'CREATED'
+    | 'GRANTED'
+    | 'REVOKED'
+    | 'ACCESSED'
+    | 'SHARE_CREATED'
+    | 'SHARE_REVOKED'
+    | 'SHARE_ACCESSED'
+    | 'EXPIRED';
+
+export interface Consent {
+    id: string;
+    petId: string;
+    ownerId: string;
+    sourceTenantId: string;
+    targetTenantId: string;
+    targetClinicName: string | null;
+    status: ApiConsentStatus;
+    scopes: ApiConsentScope[];
+    message: string | null;
+    grantedAt: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+    revokeReason: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface GrantConsentRequest {
+    petId: string;
+    targetTenantId: string;
+    targetClinicName?: string;
+    scopes?: ApiConsentScope[];
+    message?: string;
+    expiresAt?: string;
+}
+
+export interface RevokeConsentRequest {
+    reason?: string;
+}
+
+export interface ListConsentsQuery {
+    petId?: string;
+    targetTenantId?: string;
+    status?: ApiConsentStatus;
+    page?: number;
+    limit?: number;
+}
+
+export interface PassportVaccine {
+    id: string;
+    vaccineName: string;
+    manufacturer: string | null;
+    batchNumber: string | null;
+    administeredAt: string;
+    nextDueAt: string | null;
+    status: string;
+}
+
+export interface PassportMedicalRecord {
+    id: string;
+    date: string;
+    chiefComplaint: string;
+    diagnosis: string;
+    treatment: string;
+    vetName: string | null;
+}
+
+export interface PassportSurgery {
+    id: string;
+    scheduledAt: string;
+    completedAt: string | null;
+    type: string;
+    status: string;
+    postInstructions: string | null;
+}
+
+export interface PassportWeightEntry {
+    date: string;
+    weight: number;
+}
+
+export interface PassportPet {
+    id: string;
+    name: string;
+    species: string;
+    breed: string | null;
+    sex: string;
+    birthDate: string | null;
+    color: string | null;
+    microchip: string | null;
+    photoUrl: string | null;
+    weight: number | null;
+    allergies: string | null;
+    isNeutered: boolean;
+    issuedBy: { tenantId: string; tenantName: string };
+    vaccines: PassportVaccine[];
+    medicalRecords: PassportMedicalRecord[];
+    surgeries: PassportSurgery[];
+    weightHistory: PassportWeightEntry[];
+    generatedAt: string;
+}
+
+export interface PassportShare {
+    id: string;
+    petId: string;
+    token: string;
+    expiresAt: string;
+    revokedAt: string | null;
+    accessCount: number;
+    lastAccessedAt: string | null;
+    createdAt: string;
+    shareUrl: string;
+}
+
+export interface CreatePassportShareRequest {
+    petId: string;
+    ttlDays?: number;
+}
+
+export interface PassportLookupResult {
+    petId: string;
+    petName: string;
+    sourceTenantId: string;
+    sourceTenantName: string;
+    microchip: string;
+}
