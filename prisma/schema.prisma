@@ -167,6 +167,34 @@ enum ConsentAccessAction {
   REVOKE    // acción administrativa de revocación
 }
 
+// ─── Fase 2 · Membresías (monetización recurrente) ───────────────────────────
+
+enum MembershipBillingPeriod {
+  MONTHLY
+  ANNUAL
+}
+
+enum MembershipSubscriptionStatus {
+  PENDING    // creada, sin pago confirmado aún
+  ACTIVE     // vigente y generando beneficios
+  PAUSED     // suspendida temporalmente por el dueño
+  CANCELLED  // cancelada por el dueño; sigue vigente hasta fin del período actual
+  EXPIRED    // terminó el período sin renovación
+  PAST_DUE   // el último intento de cobro falló (el BillingProvider reintentará)
+}
+
+enum BillingAttemptStatus {
+  PENDING   // intento en curso
+  SUCCESS   // cobrado
+  FAILED    // rechazado; failureCode/failureMessage disponibles
+}
+
+enum BillingProviderKind {
+  MOCK       // implementación de prueba, no toca red
+  STRIPE     // implementación futura
+  PAYPHONE   // implementación futura (preferente para Ecuador)
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Tenant {
@@ -212,6 +240,9 @@ model Tenant {
   petConsentAudits       PetConsentAudit[] @relation("PetConsentAuditTenant")
   consentTokens          ConsentToken[]  @relation("ConsentTokenTenant")
   consentAccessLogs      ConsentAccessLog[] @relation("ConsentAccessLogTenant")
+  membershipPlans         MembershipPlan[] @relation("MembershipPlanTenant")
+  membershipSubscriptions MembershipSubscription[] @relation("MembershipSubscriptionTenant")
+  billingAttempts        BillingAttempt[] @relation("BillingAttemptTenant")
 
   @@map("tenants")
 }
@@ -308,6 +339,7 @@ model User {
   consentAudits           PetConsentAudit[] @relation("PetConsentAuditActor")
   ownedConsentTokens      ConsentToken[]      @relation("ConsentTokenOwner")
   accessedConsentLogs     ConsentAccessLog[]  @relation("ConsentAccessLogAccessedBy")
+  ownedMemberships        MembershipSubscription[] @relation("MembershipSubscriptionOwner")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -386,6 +418,7 @@ model Pet {
   adoptions       Adoption[]
   consents        PetConsent[]
   consentShares   PetConsentShare[]
+  membershipSubscriptions MembershipSubscription[]
 
   @@index([tenantId])
   @@index([ownerId])
@@ -1231,4 +1264,89 @@ model PosRefund {
   @@index([tenantId])
   @@index([ticketId])
   @@map("pos_refunds")
+}
+
+// ─── Fase 2 · Membresías (modelos) ────────────────────────────────────────────
+
+model MembershipPlan {
+  id                String                  @id @default(uuid())
+  tenantId          String                  // clínica dueña del catálogo
+  slug              String                  // slug único por tenant para URLs públicas
+  name              String
+  description       String?
+  priceCents        Int                     // en centavos para evitar floats
+  currency          String                  @default("USD")
+  billingPeriod     MembershipBillingPeriod @default(MONTHLY)
+  includedBenefits  String[]                @default([]) // bullets cortos: "1 consulta/mes", "10% grooming", etc.
+  applicableSpecies PetSpecies[]            @default([]) // [] = aplica a cualquier especie
+  isActive          Boolean                 @default(true)
+  displayOrder      Int                     @default(0)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  tenant        Tenant                 @relation("MembershipPlanTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptions MembershipSubscription[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, isActive])
+  @@map("membership_plans")
+}
+
+model MembershipSubscription {
+  id                 String                      @id @default(uuid())
+  tenantId           String                      // tenant del catálogo (donde vive el plan)
+  sourceTenantId     String                      // tenant del dueño de la mascota
+  petId              String
+  ownerId            String
+  planId             String
+  status             MembershipSubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  nextBillingAt      DateTime
+  autoRenew          Boolean                      @default(true)
+  paymentMethodToken String?                     // token opaco del BillingProvider (no PII/PII)
+  canceledAt         DateTime?
+  cancelReason       String?
+  lastChargedAt      DateTime?
+  lastChargeTxId     String?                     // id de transacción del último cobro exitoso
+  providerKind       BillingProviderKind         @default(MOCK)
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+
+  tenant          Tenant           @relation("MembershipSubscriptionTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  pet             Pet              @relation(fields: [petId], references: [id], onDelete: Cascade)
+  owner           User             @relation("MembershipSubscriptionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  plan            MembershipPlan   @relation(fields: [planId], references: [id])
+  billingAttempts BillingAttempt[]
+
+  @@unique([petId, planId])
+  @@index([tenantId])
+  @@index([sourceTenantId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([nextBillingAt])
+  @@map("membership_subscriptions")
+}
+
+model BillingAttempt {
+  id             String                @id @default(uuid())
+  tenantId       String                // source tenant del contexto de cobro
+  subscriptionId String
+  provider       BillingProviderKind
+  transactionId  String?               // id devuelto por el provider
+  status         BillingAttemptStatus
+  amountCents    Int
+  currency       String
+  failureCode    String?
+  failureMessage String?
+  createdAt      DateTime              @default(now())
+
+  tenant       Tenant                @relation("BillingAttemptTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription MembershipSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("billing_attempts")
 }
