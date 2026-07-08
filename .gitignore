@@ -2,3 +2,11 @@ node_modules
 dist
 api
 .env
+
+# Lockfile residual de npm — el repo usa pnpm (ver `packageManager` y
+# pnpm-lock.yaml). package-lock.json confunde a Dependabot duplicando el
+# reporte de advisories contra el árbol npm aunque no lo usemos.
+package-lock.json
+
+# Auditoría temporal generada por `pnpm audit --json` (no se commitea).
+audit.json
