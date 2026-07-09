@@ -41,6 +41,7 @@ import { appConfig } from './config/app.config';
 import { billingConfig } from './config/billing.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
+import { payphoneConfig } from './config/payphone.config';
 import { redisConfig } from './config/redis.config';
 
 @Module({
@@ -48,7 +49,7 @@ import { redisConfig } from './config/redis.config';
         // ── Config ──────────────────────────────────────────────────────────────
         ConfigModule.forRoot({
             isGlobal: true,
-            load: [appConfig, databaseConfig, jwtConfig, redisConfig, billingConfig],
+            load: [appConfig, databaseConfig, jwtConfig, redisConfig, billingConfig, payphoneConfig],
             envFilePath: ['.env.local', '.env'],
         }),
 
