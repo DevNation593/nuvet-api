@@ -167,6 +167,34 @@ enum ConsentAccessAction {
   REVOKE    // acción administrativa de revocación
 }
 
+// ─── Fase 2 · Membresías (monetización recurrente) ───────────────────────────
+
+enum MembershipBillingPeriod {
+  MONTHLY
+  ANNUAL
+}
+
+enum MembershipSubscriptionStatus {
+  PENDING    // creada, sin pago confirmado aún
+  ACTIVE     // vigente y generando beneficios
+  PAUSED     // suspendida temporalmente por el dueño
+  CANCELLED  // cancelada por el dueño; sigue vigente hasta fin del período actual
+  EXPIRED    // terminó el período sin renovación
+  PAST_DUE   // el último intento de cobro falló (el BillingProvider reintentará)
+}
+
+enum BillingAttemptStatus {
+  PENDING   // intento en curso
+  SUCCESS   // cobrado
+  FAILED    // rechazado; failureCode/failureMessage disponibles
+}
+
+enum BillingProviderKind {
+  MOCK       // implementación de prueba, no toca red
+  STRIPE     // implementación futura
+  PAYPHONE   // implementación futura (preferente para Ecuador)
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Tenant {
@@ -212,6 +240,11 @@ model Tenant {
   petConsentAudits       PetConsentAudit[] @relation("PetConsentAuditTenant")
   consentTokens          ConsentToken[]  @relation("ConsentTokenTenant")
   consentAccessLogs      ConsentAccessLog[] @relation("ConsentAccessLogTenant")
+  membershipPlans         MembershipPlan[] @relation("MembershipPlanTenant")
+  membershipSubscriptions MembershipSubscription[] @relation("MembershipSubscriptionTenant")
+  billingAttempts        BillingAttempt[] @relation("BillingAttemptTenant")
+  vaccinationCampaigns       VaccinationCampaign[]        @relation("VaccinationCampaignTenant")
+  vaccinationRegistrations   VaccinationRegistration[]   @relation("VaccinationRegistrationTenant")
 
   @@map("tenants")
 }
@@ -308,6 +341,9 @@ model User {
   consentAudits           PetConsentAudit[] @relation("PetConsentAuditActor")
   ownedConsentTokens      ConsentToken[]      @relation("ConsentTokenOwner")
   accessedConsentLogs     ConsentAccessLog[]  @relation("ConsentAccessLogAccessedBy")
+  ownedMemberships        MembershipSubscription[] @relation("MembershipSubscriptionOwner")
+  vaccinationCampaignsCreated VaccinationCampaign[]       @relation("VaccinationCampaignCreatedBy")
+  vaccinationRegistrations   VaccinationRegistration[]  @relation("VaccinationRegistrationOwner")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -386,6 +422,8 @@ model Pet {
   adoptions       Adoption[]
   consents        PetConsent[]
   consentShares   PetConsentShare[]
+  membershipSubscriptions MembershipSubscription[]
+  vaccinationRegistrations VaccinationRegistration[]
 
   @@index([tenantId])
   @@index([ownerId])
@@ -1316,4 +1354,73 @@ model BillingAttempt {
   @@index([status])
   @@index([createdAt])
   @@map("billing_attempts")
+}
+
+// ─── Fase 3 · Campañas de vacunación ─────────────────────────────────────────
+
+enum VaccinationCampaignStatus {
+  DRAFT     // staff la está armando, no visible al cliente
+  OPEN      // abierta para inscripciones de mascotas
+  CLOSED    // cerrada: no más inscripciones, aún no ejecutada
+  COMPLETED // ejecutada, registros cerrados
+  CANCELLED // cancelada
+}
+
+enum VaccinationRegistrationStatus {
+  REGISTERED // el dueño inscribió a la mascota
+  ATTENDED   // la mascota recibió la vacuna en la fecha de la campaña
+  NO_SHOW    // el dueño no llevó a la mascota
+  CANCELLED  // inscripción cancelada
+}
+
+model VaccinationCampaign {
+  id             String                    @id @default(uuid())
+  tenantId       String                    // clínica que organiza la campaña
+  name           String
+  description    String?
+  vaccineName    String                    // ej: "Antirrábica", "Parvovirus", "Quíntuple"
+  startsAt       DateTime
+  endsAt         DateTime
+  location       String?                   // dirección / sede de la jornada
+  capacity       Int?                      // cupos disponibles (null = sin tope)
+  priceCents     Int                       @default(0) // 0 = gratuita
+  currency       String                    @default("USD")
+  status         VaccinationCampaignStatus @default(DRAFT)
+  notes          String?                   // instrucciones para el dueño
+  createdById     String                    // staff que la creó
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  tenant        Tenant                          @relation("VaccinationCampaignTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy     User                            @relation("VaccinationCampaignCreatedBy", fields: [createdById], references: [id])
+  registrations VaccinationRegistration[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, startsAt])
+  @@map("vaccination_campaigns")
+}
+
+model VaccinationRegistration {
+  id           String                         @id @default(uuid())
+  tenantId     String                         // denormalizado para que el middleware de tenant no tenga que saltar por la relación campaign
+  campaignId   String
+  petId        String
+  ownerId      String
+  status       VaccinationRegistrationStatus  @default(REGISTERED)
+  attendedAt   DateTime?
+  notes        String?                        // observaciones del staff el día de la jornada
+  createdAt    DateTime                       @default(now())
+  updatedAt    DateTime                       @updatedAt
+
+  campaign VaccinationCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  pet      Pet                 @relation(fields: [petId], references: [id], onDelete: Cascade)
+  owner    User                @relation("VaccinationRegistrationOwner", fields: [ownerId], references: [id])
+  tenant   Tenant              @relation("VaccinationRegistrationTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, petId])
+  @@index([tenantId])
+  @@index([campaignId, status])
+  @@index([petId])
+  @@index([ownerId])
+  @@map("vaccination_registrations")
 }
