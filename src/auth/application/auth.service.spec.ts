@@ -92,7 +92,11 @@ describe('AuthService', () => {
             expect(result).toHaveProperty('accessToken');
             expect(result).toHaveProperty('refreshToken');
             expect(result.user).toBeDefined();
-            expect(result.user.email).toBe('test@example.com');
+            // El shape de `result.user` es `{ ...rest, permissions }` donde
+            // TS infiere `rest` sin propiedades indexables. Usamos
+            // `toMatchObject` para chequear subset sin activar el error
+            // TS2339 sobre `email`.
+            expect(result.user).toMatchObject({ email: 'test@example.com' });
         });
 
         it('should throw on invalid email', async () => {

@@ -1,91 +1,133 @@
-import { ConsentScope, ConsentStatus } from '@prisma/client';
+import { ConsentAccessAction, ConsentTokenScope, ConsentTokenStatus } from '@prisma/client';
 
-export interface IConsentRepository {
-    /**
-     * Find a single consent by id, scoped to source tenant.
-     */
-    findOne(tenantId: string, id: string): Promise<ConsentWithRelations | null>;
+/**
+ * ConsentToken — Fase 2.
+ *
+ * Token emitido por el dueño (o staff) de un expediente para autorizar a un
+ * tercero (identificado por email) a acceder a una o varias mascotas
+ * específicas de su tenant. Cada validación/lectura genera una entrada en
+ * ConsentAccessLog.
+ */
 
-    /**
-     * Find a single consent by id globally (across tenants). Uses unscoped client.
-     * Reserved for `PassportService` only.
-     */
-    findOneGlobal(id: string): Promise<ConsentWithRelations | null>;
-
-    /**
-     * List consents owned by a specific user, with optional filters.
-     */
-    findByOwner(
-        ownerId: string,
-        filter: {
-            petId?: string;
-            targetTenantId?: string;
-            status?: ConsentStatus;
-        },
-        pagination: { skip: number; take: number },
-    ): Promise<{ data: ConsentWithRelations[]; total: number }>;
-
-    /**
-     * List consents for a pet, scoped to source tenant.
-     */
-    findByPet(
-        tenantId: string,
-        petId: string,
-        pagination: { skip: number; take: number },
-    ): Promise<{ data: ConsentWithRelations[]; total: number }>;
-
-    /**
-     * Check whether an active GRANTED consent exists for (pet, targetTenant) and is not expired.
-     */
-    findActiveGrant(petId: string, targetTenantId: string, scopes: ConsentScope[]): Promise<ConsentWithRelations | null>;
-
-    /**
-     * Count active (GRANTED, not expired) consents a pet currently has — used
-     * to enforce uniqueness when granting a new one.
-     */
-    countActiveGrantsForPetTarget(petId: string, targetTenantId: string): Promise<number>;
-
-    /**
-     * Create or update a consent. Implementation decides which (see service).
-     */
-    upsertGrant(input: GrantConsentInput): Promise<ConsentWithRelations>;
-
-    /**
-     * Mark a consent as REVOKED.
-     */
-    revoke(id: string, input: { reason?: string; now: Date }): Promise<ConsentWithRelations>;
+export interface ConsentTokenRecord {
+    id: string;
+    tenantId: string;
+    ownerUserId: string;
+    granteeEmail: string;
+    granteeTenantId: string | null;
+    scope: ConsentTokenScope;
+    petIds: string[];
+    status: ConsentTokenStatus;
+    expiresAt: Date;
+    createdAt: Date;
+    revokedAt: Date | null;
+    auditReason: string | null;
 }
 
-export interface GrantConsentInput {
+export interface ConsentAccessLogRecord {
+    id: string;
     tenantId: string;
-    sourceTenantId: string;
-    petId: string;
-    ownerId: string;
-    targetTenantId: string;
-    targetClinicName?: string;
-    scopes: ConsentScope[];
-    message?: string;
-    expiresAt?: Date | null;
+    consentTokenId: string;
+    accessedByUserId: string;
+    accessedByTenantId: string | null;
+    action: ConsentAccessAction;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: Date;
+}
+
+export interface CreateConsentTokenInput {
+    tenantId: string;
+    ownerUserId: string;
+    granteeEmail: string;
+    granteeTenantId?: string | null;
+    scope: ConsentTokenScope;
+    petIds: string[];
+    expiresAt: Date;
+    auditReason?: string | null;
     now: Date;
 }
 
-export type ConsentWithRelations = {
-    id: string;
+export interface UpdateConsentTokenInput {
+    scope?: ConsentTokenScope;
+    expiresAt?: Date;
+    auditReason?: string | null;
+    revokedAt?: Date;
+}
+
+export interface ConsentAccessLogWriteInput {
     tenantId: string;
-    sourceTenantId: string;
-    petId: string;
-    ownerId: string;
-    targetTenantId: string;
-    targetClinicName: string | null;
-    status: ConsentStatus;
-    scopes: ConsentScope[];
-    message: string | null;
-    grantedAt: Date;
-    expiresAt: Date | null;
-    revokedAt: Date | null;
-    revokeReason: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-};
+    consentTokenId: string;
+    accessedByUserId: string;
+    accessedByTenantId?: string | null;
+    action: ConsentAccessAction;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+}
+
+export interface ConsentAccessLogListFilter {
+    tokenId?: string;
+    action?: ConsentAccessAction;
+    from?: Date;
+    to?: Date;
+}
+
+export interface IConsentRepository {
+    /**
+     * Busca un token por id dentro del tenant del caller (middleware ya inyecta
+     * tenantId en queries). Devuelve null si no existe o pertenece a otro tenant.
+     */
+    findTokenById(tenantId: string, tokenId: string): Promise<ConsentTokenRecord | null>;
+
+    /**
+     * Crea un nuevo token. La unicidad no se enforza aquí — si el dueño quiere
+     * reemplazar un token vigente para el mismo (granteeEmail, petIds) debe
+     * revocarlo explícitamente.
+     */
+    createToken(input: CreateConsentTokenInput): Promise<ConsentTokenRecord>;
+
+    /**
+     * Actualiza campos parciales de un token (típicamente para revocación).
+     */
+    updateToken(
+        tenantId: string,
+        tokenId: string,
+        input: UpdateConsentTokenInput,
+    ): Promise<ConsentTokenRecord>;
+
+    /**
+     * Verifica que cada `petId` pertenezca al tenant emisor y que el pet esté
+     * activo. Devuelve la lista de pets que NO cumplen — vacía si todo OK.
+     */
+    findPetsNotInTenant(
+        tenantId: string,
+        petIds: string[],
+    ): Promise<Array<{ id: string }>>;
+
+    /**
+     * Inserta una entrada de auditoría. tenantId se inyecta por el middleware.
+     */
+    createAccessLog(input: ConsentAccessLogWriteInput): Promise<ConsentAccessLogRecord>;
+
+    /**
+     * Lista entradas de auditoría con paginación y filtros.
+     */
+    listAccessLogs(
+        tenantId: string,
+        filter: ConsentAccessLogListFilter,
+        pagination: { skip: number; take: number },
+    ): Promise<{ data: ConsentAccessLogRecord[]; total: number }>;
+}
+
+/**
+ * Resultado de la validación de un token. No se mezcla con `ConsentTokenRecord`
+ * para que el controller pueda serializar un shape distinto al del modelo Prisma
+ * (p.ej. añadir un `now` server-side para comparar).
+ */
+export interface ConsentValidationResult {
+    valid: boolean;
+    reason?: 'NOT_FOUND' | 'REVOKED' | 'EXPIRED';
+    token: ConsentTokenRecord | null;
+}
 
 export const CONSENT_REPOSITORY = Symbol('IConsentRepository');

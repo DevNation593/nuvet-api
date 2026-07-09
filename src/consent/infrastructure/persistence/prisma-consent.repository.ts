@@ -1,154 +1,212 @@
 import { Injectable } from '@nestjs/common';
+import { ConsentAccessAction, ConsentTokenScope, ConsentTokenStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { PassportPrismaService } from '../../../prisma/passport-prisma.service';
 import {
-    ConsentWithRelations,
-    GrantConsentInput,
+    ConsentAccessLogListFilter,
+    ConsentAccessLogRecord,
+    ConsentAccessLogWriteInput,
+    ConsentTokenRecord,
+    CreateConsentTokenInput,
     IConsentRepository,
+    UpdateConsentTokenInput,
 } from '../../domain/consent.repository';
-import { ConsentScope, ConsentStatus, Prisma } from '@prisma/client';
 
+/**
+ * Implementación Prisma del repositorio de consent tokens.
+ *
+ * Notas de multi-tenancy:
+ *  - El middleware `applyTenantScope` inyecta `tenantId` en TODAS las queries
+ *    de modelos en `TENANT_SCOPED_MODELS` (incluye `ConsentToken` y
+ *    `ConsentAccessLog`). Las búsquedas usan `findFirst({ where: { id } })`
+ *    para que la inyección se aplique correctamente.
+ *  - En `create`/`createAccessLog` el `tenantId` viene del caller y coincide
+ *    con el del middleware (ambos = actor tenantId), por lo que es seguro
+ *    pasarlo explícito.
+ *  - `updateToken` siempre llama primero `findTokenById` para que un intento
+ *    cross-tenant devuelva null en lugar de un P2025 (más fácil de mapear a
+ *    NotFoundException en la capa de servicio).
+ */
 @Injectable()
 export class PrismaConsentRepository implements IConsentRepository {
-    constructor(
-        private readonly prisma: PrismaService,
-        private readonly passportPrisma: PassportPrismaService,
-    ) {}
+    constructor(private readonly prisma: PrismaService) {}
 
-    async findOne(tenantId: string, id: string): Promise<ConsentWithRelations | null> {
-        return this.prisma.petConsent.findFirst({
-            where: { id, tenantId },
-        }) as Promise<ConsentWithRelations | null>;
-    }
-
-    async findOneGlobal(id: string): Promise<ConsentWithRelations | null> {
-        return this.passportPrisma.client.petConsent.findUnique({ where: { id } }) as Promise<
-            ConsentWithRelations | null
-        >;
-    }
-
-    async findByOwner(
-        ownerId: string,
-        filter: {
-            petId?: string;
-            targetTenantId?: string;
-            status?: ConsentStatus;
-        },
-        pagination: { skip: number; take: number },
-    ): Promise<{ data: ConsentWithRelations[]; total: number }> {
-        const where: Prisma.PetConsentWhereInput = { ownerId };
-        if (filter.petId) where.petId = filter.petId;
-        if (filter.targetTenantId) where.targetTenantId = filter.targetTenantId;
-        if (filter.status) where.status = filter.status;
-
-        const [data, total] = await this.prisma.$transaction([
-            this.prisma.petConsent.findMany({
-                where,
-                skip: pagination.skip,
-                take: pagination.take,
-                orderBy: { createdAt: 'desc' },
-            }),
-            this.prisma.petConsent.count({ where }),
-        ]);
-
-        return { data: data as ConsentWithRelations[], total };
-    }
-
-    async findByPet(
-        tenantId: string,
-        petId: string,
-        pagination: { skip: number; take: number },
-    ): Promise<{ data: ConsentWithRelations[]; total: number }> {
-        const where: Prisma.PetConsentWhereInput = { tenantId, petId };
-        const [data, total] = await this.prisma.$transaction([
-            this.prisma.petConsent.findMany({
-                where,
-                skip: pagination.skip,
-                take: pagination.take,
-                orderBy: { createdAt: 'desc' },
-            }),
-            this.prisma.petConsent.count({ where }),
-        ]);
-
-        return { data: data as ConsentWithRelations[], total };
-    }
-
-    async findActiveGrant(
-        petId: string,
-        targetTenantId: string,
-        scopes: ConsentScope[],
-    ): Promise<ConsentWithRelations | null> {
-        // Usamos el cliente cross-tenant porque el consentimiento puede estar en
-        // cualquier tenant fuente. Unicamente lo lee el `PassportService` para
-        // verificar la vigencia del grant.
-        const grants = await this.passportPrisma.client.petConsent.findMany({
-            where: {
-                petId,
-                targetTenantId,
-                status: ConsentStatus.GRANTED,
-                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-                scopes: { hasEvery: scopes },
-            },
+    async findTokenById(tenantId: string, tokenId: string): Promise<ConsentTokenRecord | null> {
+        const found = await this.prisma.consentToken.findFirst({
+            where: { id: tokenId, tenantId },
         });
-
-        return (grants[0] as ConsentWithRelations) ?? null;
+        return found ? this.toTokenRecord(found) : null;
     }
 
-    async countActiveGrantsForPetTarget(petId: string, targetTenantId: string): Promise<number> {
-        return this.passportPrisma.client.petConsent.count({
-            where: {
-                petId,
-                targetTenantId,
-                status: ConsentStatus.GRANTED,
-                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-            },
-        });
-    }
-
-    async upsertGrant(input: GrantConsentInput): Promise<ConsentWithRelations> {
-        // Si ya existe un GRANTED activo para el mismo (pet, targetTenantId), lo revoca
-        // lógicamente (revokedAt) y crea uno nuevo. Conservamos historial.
-        await this.passportPrisma.client.petConsent.updateMany({
-            where: {
-                petId: input.petId,
-                targetTenantId: input.targetTenantId,
-                status: ConsentStatus.GRANTED,
-                OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }],
-            },
-            data: {
-                status: ConsentStatus.REVOKED,
-                revokedAt: input.now,
-                revokeReason: 'Reemplazado por nuevo grant',
-            },
-        });
-
-        return this.passportPrisma.client.petConsent.create({
+    async createToken(input: CreateConsentTokenInput): Promise<ConsentTokenRecord> {
+        const created = await this.prisma.consentToken.create({
             data: {
                 tenantId: input.tenantId,
-                sourceTenantId: input.sourceTenantId,
-                petId: input.petId,
-                ownerId: input.ownerId,
-                targetTenantId: input.targetTenantId,
-                targetClinicName: input.targetClinicName,
-                scopes: input.scopes,
-                message: input.message,
-                expiresAt: input.expiresAt ?? null,
-                grantedAt: input.now,
+                ownerUserId: input.ownerUserId,
+                granteeEmail: input.granteeEmail.toLowerCase(),
+                granteeTenantId: input.granteeTenantId ?? null,
+                scope: input.scope,
+                petIds: input.petIds,
+                expiresAt: input.expiresAt,
+                auditReason: input.auditReason ?? null,
             },
-        }) as Promise<ConsentWithRelations>;
+        });
+        return this.toTokenRecord(created);
     }
 
-    async revoke(
-        id: string,
-        input: { reason?: string; now: Date },
-    ): Promise<ConsentWithRelations> {
-        return this.passportPrisma.client.petConsent.update({
-            where: { id },
-            data: {
-                status: ConsentStatus.REVOKED,
-                revokedAt: input.now,
-                revokeReason: input.reason ?? null,
+    async updateToken(
+        tenantId: string,
+        tokenId: string,
+        input: UpdateConsentTokenInput,
+    ): Promise<ConsentTokenRecord> {
+        // Verificar ownership dentro del tenant antes de actualizar; esto evita
+        // un P2025 ruidoso cuando el caller intenta actualizar un token de
+        // otro tenant.
+        const existing = await this.findTokenById(tenantId, tokenId);
+        if (!existing) {
+            throw new ConsentTokenNotFoundError(tokenId);
+        }
+
+        const data: Prisma.ConsentTokenUpdateInput = {};
+        if (input.scope !== undefined) data.scope = input.scope;
+        if (input.expiresAt !== undefined) data.expiresAt = input.expiresAt;
+        if (input.auditReason !== undefined) data.auditReason = input.auditReason;
+        if (input.revokedAt !== undefined) {
+            data.revokedAt = input.revokedAt;
+            data.status = ConsentTokenStatus.REVOKED;
+        }
+
+        const updated = await this.prisma.consentToken.update({
+            where: { id: tokenId },
+            data,
+        });
+        return this.toTokenRecord(updated);
+    }
+
+    async findPetsNotInTenant(
+        tenantId: string,
+        petIds: string[],
+    ): Promise<Array<{ id: string }>> {
+        if (petIds.length === 0) return [];
+        const found = await this.prisma.pet.findMany({
+            where: {
+                tenantId,
+                id: { in: petIds },
             },
-        }) as Promise<ConsentWithRelations>;
+            select: { id: true },
+        });
+        const foundSet = new Set(found.map((p) => p.id));
+        return petIds
+            .filter((id) => !foundSet.has(id))
+            .map((id) => ({ id }));
+    }
+
+    async createAccessLog(input: ConsentAccessLogWriteInput): Promise<ConsentAccessLogRecord> {
+        const created = await this.prisma.consentAccessLog.create({
+            data: {
+                tenantId: input.tenantId,
+                consentTokenId: input.consentTokenId,
+                accessedByUserId: input.accessedByUserId,
+                accessedByTenantId: input.accessedByTenantId ?? null,
+                action: input.action,
+                ipAddress: input.ipAddress ?? null,
+                userAgent: input.userAgent ?? null,
+            },
+        });
+        return this.toAccessLogRecord(created);
+    }
+
+    async listAccessLogs(
+        tenantId: string,
+        filter: ConsentAccessLogListFilter,
+        pagination: { skip: number; take: number },
+    ): Promise<{ data: ConsentAccessLogRecord[]; total: number }> {
+        const where: Prisma.ConsentAccessLogWhereInput = { tenantId };
+        if (filter.tokenId) where.consentTokenId = filter.tokenId;
+        if (filter.action) where.action = filter.action;
+        if (filter.from || filter.to) {
+            where.createdAt = {};
+            if (filter.from) (where.createdAt as Prisma.DateTimeFilter).gte = filter.from;
+            if (filter.to) (where.createdAt as Prisma.DateTimeFilter).lte = filter.to;
+        }
+
+        const [data, total] = await Promise.all([
+            this.prisma.consentAccessLog.findMany({
+                where,
+                skip: pagination.skip,
+                take: pagination.take,
+                orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.consentAccessLog.count({ where }),
+        ]);
+
+        return { data: data.map((row) => this.toAccessLogRecord(row)), total };
+    }
+
+    // ─── Mappers ────────────────────────────────────────────────────────────
+
+    private toTokenRecord(row: {
+        id: string;
+        tenantId: string;
+        ownerUserId: string;
+        granteeEmail: string;
+        granteeTenantId: string | null;
+        scope: ConsentTokenScope;
+        petIds: string[];
+        status: ConsentTokenStatus;
+        expiresAt: Date;
+        createdAt: Date;
+        revokedAt: Date | null;
+        auditReason: string | null;
+    }): ConsentTokenRecord {
+        return {
+            id: row.id,
+            tenantId: row.tenantId,
+            ownerUserId: row.ownerUserId,
+            granteeEmail: row.granteeEmail,
+            granteeTenantId: row.granteeTenantId,
+            scope: row.scope,
+            petIds: [...row.petIds],
+            status: row.status,
+            expiresAt: row.expiresAt,
+            createdAt: row.createdAt,
+            revokedAt: row.revokedAt,
+            auditReason: row.auditReason,
+        };
+    }
+
+    private toAccessLogRecord(row: {
+        id: string;
+        tenantId: string;
+        consentTokenId: string;
+        accessedByUserId: string;
+        accessedByTenantId: string | null;
+        action: ConsentAccessAction;
+        ipAddress: string | null;
+        userAgent: string | null;
+        createdAt: Date;
+    }): ConsentAccessLogRecord {
+        return {
+            id: row.id,
+            tenantId: row.tenantId,
+            consentTokenId: row.consentTokenId,
+            accessedByUserId: row.accessedByUserId,
+            accessedByTenantId: row.accessedByTenantId,
+            action: row.action,
+            ipAddress: row.ipAddress,
+            userAgent: row.userAgent,
+            createdAt: row.createdAt,
+        };
+    }
+}
+
+/**
+ * Excepción de dominio: token no encontrado en el tenant del caller.
+ * El servicio la traduce a `NotFoundException` para mantener el dominio
+ * libre de tipos HTTP.
+ */
+export class ConsentTokenNotFoundError extends Error {
+    constructor(public readonly tokenId: string) {
+        super(`Consent token ${tokenId} not found`);
+        this.name = 'ConsentTokenNotFoundError';
     }
 }
