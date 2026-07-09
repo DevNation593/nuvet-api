@@ -109,3 +109,40 @@ export interface IBillingAttemptRepository {
 }
 
 export const BILLING_ATTEMPT_REPOSITORY = Symbol('IBillingAttemptRepository');
+
+/**
+ * Sub-interfaz de solo lectura para alimentar el dashboard
+ * `/clinic/billing-attempts`. Separada de la IBillingAttemptRepository
+ * (escritura vía `BillingProvider`) para mantener SRP: la fuente de
+ * verdad de la persistencia es el provider (que cruza tenants vía
+ * `PassportPrismaService`); el dashboard sólo consulta scoped.
+ *
+ * Fase 2 · Slice 2.
+ */
+export interface IBillingAttemptQueryRepository {
+    /**
+     * Lista paginada de intentos de cobro fallidos del tenant, con
+     * JOIN opcional de suscripción + dueño + plan + mascota.
+     */
+    listFailures(
+        tenantId: string,
+        options: { since: Date; skip: number; take: number },
+    ): Promise<{ data: unknown[]; total: number }>;
+
+    /**
+     * Conteos agregados para los últimos 1d/7d/30d, top 5 failureCodes
+     * y cantidad de suscripciones actualmente en `PAST_DUE` en el tenant.
+     */
+    summarizeFailures(tenantId: string, since: Date): Promise<{
+        failuresLast24Hours: number;
+        failuresLast7Days: number;
+        failuresLast30Days: number;
+        pastDueSubscriptions: number;
+        topFailureCodes: { failureCode: string; failureMessage: string | null; count: number }[];
+        totalRecoveredAfterFailure: number;
+    }>;
+}
+
+export const BILLING_ATTEMPT_QUERY_REPOSITORY = Symbol(
+    'IBillingAttemptQueryRepository',
+);

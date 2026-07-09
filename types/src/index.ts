@@ -32,10 +32,6 @@ export enum PermissionModule {
   BILLING = 'billing',
   // Fase 1: pasaporte médico digital + consentimiento entre clínicas.
   PASSPORT = 'passport',
-  // Fase 2: tokens de consentimiento emitidos por email a terceros.
-  CONSENT = 'consent',
-  // Fase 2 · Slice 1: monetización recurrente (membresías MVP).
-  MEMBERSHIPS = 'memberships',
 }
 
 export enum PermissionAction {

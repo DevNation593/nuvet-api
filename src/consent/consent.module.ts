@@ -6,18 +6,18 @@ import { PrismaConsentRepository } from './infrastructure/persistence/prisma-con
 import { CONSENT_REPOSITORY } from './domain/consent.repository';
 
 /**
- * Módulo de consent tokens (Fase 2).
+ * Módulo de consentimientos (Fase 1 · pasaporte médico).
  *
- * Componentes:
- *   - `ConsentService`        : issueToken / validateToken / revokeToken / listAccessLogs.
- *   - `ConsentAuditWriter`    : writer centralizado para `consent_access_logs`.
- *   - `PrismaConsentRepository`: implementación del repositorio con Prisma.
+ * Servicios:
+ *   - ConsentService    : grant / revoke / listMine (lógica de negocio)
+ *   - ConsentAuditWriter: helper compartido con PassportService
  *
- * Re-exporta `ConsentService`, `ConsentAuditWriter` y `CONSENT_REPOSITORY`
- * para mantener compatibilidad con `PassportModule` (Fase 1), que consume
- * los métodos legacy `recordAccess` y `findActiveGrantForPetAndTenant`.
+ * Repositorio:
+ *   - PrismaConsentRepository : operaciones CRUD con bypass selectivo a
+ *     `PassportPrismaService` para lecturas cross-tenant.
  *
- * No importa `PrismaModule` porque es `@Global()`.
+ * El módulo NO necesita import del PrismaModule porque ambos servicios Prisma
+ * son globales.
  */
 @Module({
     controllers: [ConsentController],

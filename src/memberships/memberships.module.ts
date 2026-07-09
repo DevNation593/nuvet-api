@@ -8,6 +8,7 @@ import { MembershipPlansController } from './infrastructure/http/membership-plan
 import { MembershipSubscriptionsController } from './infrastructure/http/membership-subscriptions.controller';
 import { PrismaMembershipPlanRepository } from './infrastructure/persistence/prisma-membership-plan.repository';
 import { PrismaMembershipSubscriptionRepository } from './infrastructure/persistence/prisma-membership-subscription.repository';
+import { PrismaMembershipBillingAttemptReportRepository } from './infrastructure/persistence/prisma-membership-billing-attempt-report.repository';
 import { MockBillingProvider } from './infrastructure/billing/mock-billing.provider';
 import { PayPhoneBillingProvider } from './infrastructure/billing/payphone-billing.provider';
 import { MembershipRenewalCron } from './infrastructure/cron/membership-renewal-cron';
@@ -15,6 +16,7 @@ import {
     BILLING_PROVIDER,
 } from './application/billing/billing-provider.token';
 import {
+    BILLING_ATTEMPT_QUERY_REPOSITORY,
     MEMBERSHIP_PLAN_REPOSITORY,
     MEMBERSHIP_SUBSCRIPTION_REPOSITORY,
 } from './domain/membership.repository';
@@ -37,11 +39,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
             provide: MEMBERSHIP_SUBSCRIPTION_REPOSITORY,
             useClass: PrismaMembershipSubscriptionRepository,
         },
-        // `BILLING_PROVIDER` se elige en runtime según feature flag.
-        //   - billing_payphone_provider=false  → MockBillingProvider (default)
-        //   - billing_payphone_provider=true   → PayPhoneBillingProvider
-        //     (si las credenciales no están configuradas, fallback
-        //     defensivo a Mock + warning para no romper cobros)
+        {
+            provide: BILLING_ATTEMPT_QUERY_REPOSITORY,
+            useClass: PrismaMembershipBillingAttemptReportRepository,
+        },
+        // `MockBillingProvider` se inyecta como el `BillingProvider` por
+        // defecto. Cuando llegue Stripe/PayPhone, sólo cambia el binding.
         {
             provide: BILLING_PROVIDER,
             inject: [FeatureFlagsService, ConfigService, PassportPrismaService],

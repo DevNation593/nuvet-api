@@ -79,6 +79,11 @@ function buildService() {
         cancelAtPeriodEnd: jest.fn(),
     };
 
+    const report = {
+        listFailures: jest.fn(),
+        summarizeFailures: jest.fn(),
+    };
+
     const prisma = {
         pet: { findFirst: jest.fn() },
         membershipPlan: { findFirst: jest.fn() },
@@ -91,11 +96,12 @@ function buildService() {
     const service = new MembershipSubscriptionsService(
         repo as any,
         billingProvider as any,
+        report as any,
         prisma as any,
         passportPrisma,
     );
 
-    return { service, repo, billingProvider, prisma };
+    return { service, repo, billingProvider, report, prisma };
 }
 
 describe('MembershipSubscriptionsService.computePeriod', () => {
@@ -436,5 +442,133 @@ describe('MembershipSubscriptionsService.renewIfDue', () => {
 
         const result = await service.renewIfDue('sub-1');
         expect(result).toEqual({ status: 'renewed' });
+    });
+});
+
+describe('MembershipSubscriptionsService.getBillingFailureReport', () => {
+    const SUMMARY_FIXTURE = {
+        failuresLast24Hours: 2,
+        failuresLast7Days: 8,
+        failuresLast30Days: 31,
+        pastDueSubscriptions: 4,
+        topFailureCodes: [
+            { failureCode: 'card_declined', failureMessage: 'Tarjeta rechazada', count: 14 },
+            { failureCode: 'insufficient_funds', failureMessage: 'Sin fondos', count: 8 },
+        ],
+        totalRecoveredAfterFailure: 5,
+    };
+
+    it('combina listFailures + summarizeFailures en una sola respuesta', async () => {
+        const { service, report } = buildService();
+        report.listFailures.mockResolvedValueOnce({
+            data: [{ id: 'att-1' }],
+            total: 17,
+        });
+        report.summarizeFailures.mockResolvedValueOnce(SUMMARY_FIXTURE);
+
+        const result = await service.getBillingFailureReport('tenant-1', {});
+
+        expect(result.attempts).toEqual([{ id: 'att-1' }]);
+        expect(result.total).toBe(17);
+        expect(result.summary).toEqual(SUMMARY_FIXTURE);
+        expect(report.listFailures).toHaveBeenCalledWith(
+            'tenant-1',
+            expect.objectContaining({
+                take: 20,
+                skip: 0,
+            }),
+        );
+        expect(report.summarizeFailures).toHaveBeenCalledWith(
+            'tenant-1',
+            expect.any(Date),
+        );
+    });
+
+    it('respeta pageSize y calcula skip correctamente', async () => {
+        const { service, report } = buildService();
+        report.listFailures.mockResolvedValueOnce({ data: [], total: 0 });
+        report.summarizeFailures.mockResolvedValueOnce({
+            ...SUMMARY_FIXTURE,
+            failuresLast24Hours: 0,
+            failuresLast7Days: 0,
+            failuresLast30Days: 0,
+            pastDueSubscriptions: 0,
+            topFailureCodes: [],
+            totalRecoveredAfterFailure: 0,
+        });
+
+        const result = await service.getBillingFailureReport('tenant-1', {
+            page: 3,
+            pageSize: 10,
+        });
+
+        expect(result.page).toBe(3);
+        expect(result.pageSize).toBe(10);
+        expect(report.listFailures).toHaveBeenCalledWith(
+            'tenant-1',
+            expect.objectContaining({ take: 10, skip: 20 }),
+        );
+    });
+
+    it('cap pageSize al rango [1, 100]', async () => {
+        const { service, report } = buildService();
+        report.listFailures.mockResolvedValue({ data: [], total: 0 });
+        report.summarizeFailures.mockResolvedValue({
+            failuresLast24Hours: 0,
+            failuresLast7Days: 0,
+            failuresLast30Days: 0,
+            pastDueSubscriptions: 0,
+            topFailureCodes: [],
+            totalRecoveredAfterFailure: 0,
+        });
+
+        const resultDown = await service.getBillingFailureReport('tenant-1', {
+            pageSize: 0,
+        });
+        const resultUp = await service.getBillingFailureReport('tenant-1', {
+            pageSize: 9999,
+        });
+        const resultMinPage = await service.getBillingFailureReport('tenant-1', {
+            page: -5,
+        });
+        const resultFractional = await service.getBillingFailureReport('tenant-1', {
+            page: 1.7,
+        });
+
+        expect(resultDown.pageSize).toBe(1);
+        expect(resultUp.pageSize).toBe(100);
+        expect(resultMinPage.page).toBe(1);
+        expect(resultFractional.page).toBe(1);
+    });
+
+    it('usa el since provisto o hace default a 30 días atrás', async () => {
+        const { service, report } = buildService();
+        report.listFailures.mockResolvedValue({ data: [], total: 0 });
+        report.summarizeFailures.mockResolvedValue({
+            failuresLast24Hours: 0,
+            failuresLast7Days: 0,
+            failuresLast30Days: 0,
+            pastDueSubscriptions: 0,
+            topFailureCodes: [],
+            totalRecoveredAfterFailure: 0,
+        });
+
+        const explicit = new Date('2026-01-01T00:00:00.000Z');
+        await service.getBillingFailureReport('tenant-1', { since: explicit });
+        expect(report.listFailures).toHaveBeenLastCalledWith(
+            'tenant-1',
+            expect.objectContaining({ since: explicit }),
+        );
+        expect(report.summarizeFailures).toHaveBeenLastCalledWith('tenant-1', explicit);
+
+        // Default = 30 días atrás (aprox)
+        const before = Date.now();
+        await service.getBillingFailureReport('tenant-1', {});
+        const after = Date.now();
+        const lastSince = report.listFailures.mock.calls.at(-1)?.[1]?.since as Date;
+        expect(lastSince).toBeDefined();
+        const sinceTs = lastSince.getTime();
+        expect(sinceTs).toBeGreaterThan(before - 30 * 24 * 60 * 60 * 1000 - 5000);
+        expect(sinceTs).toBeLessThan(after - 30 * 24 * 60 * 60 * 1000 + 5000);
     });
 });
