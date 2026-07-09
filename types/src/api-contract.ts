@@ -561,6 +561,71 @@ export interface MembershipSubscriptionListResponse {
     total: number;
 }
 
+// ─── Fase 2 · Membresías (Slice 2 — Reportes de Billing) ─────────────────────
+
+export type ApiBillingAttemptStatus = 'SUCCESS' | 'FAILED';
+
+export interface BillingAttempt {
+    id: string;
+    tenantId: string;
+    subscriptionId: string;
+    provider: ApiBillingProviderKind;
+    transactionId: string | null;
+    status: ApiBillingAttemptStatus;
+    amountCents: number;
+    currency: string;
+    failureCode: string | null;
+    failureMessage: string | null;
+    createdAt: string;
+    /** Join opcional (solo en endpoints de reporte). */
+    subscription?: {
+        id: string;
+        status: ApiMembershipSubscriptionStatus;
+        ownerId: string;
+        owner?: { id: string; firstName: string; lastName: string; email: string };
+        plan?: { id: string; name: string; priceCents: number; currency: string };
+        pet?: { id: string; name: string };
+    };
+}
+
+export interface BillingFailureCodeCount {
+    failureCode: string;
+    failureMessage: string | null;
+    count: number;
+}
+
+/**
+ * Resumen agregado de intentos de cobro fallidos — alimenta la card
+ * superior del dashboard `/clinic/billing-attempts`.
+ */
+export interface BillingFailureReportSummary {
+    failuresLast24Hours: number;
+    failuresLast7Days: number;
+    failuresLast30Days: number;
+    /** Suscripciones que actualmente están en `PAST_DUE` (impacto vivo). */
+    pastDueSubscriptions: number;
+    /** Top 5 códigos de fallo más frecuentes con su descripción humana. */
+    topFailureCodes: BillingFailureCodeCount[];
+    /** Total recuperado = intentos SUCCESS que ocurrieron después de un FAILED
+     *  para la misma suscripción (heurística: la suscripción volvió a pago). */
+    totalRecoveredAfterFailure: number;
+}
+
+export interface BillingFailureReport {
+    summary: BillingFailureReportSummary;
+    attempts: BillingAttempt[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
+export interface ListBillingFailureAttemptsParams {
+    /** ISO date — filtra por `createdAt >= since`. Default: hace 30 días. */
+    since?: string;
+    page?: number;
+    pageSize?: number;
+}
+
 // ─── Fase 2 · Consent tokens emitidos por email a terceros ───────────────────
 
 /**
