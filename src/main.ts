@@ -132,6 +132,7 @@ async function bootstrap() {
             .addTag('appointments', 'Appointment scheduling')
             .addTag('medical-records', 'Medical records & consultations')
             .addTag('vaccinations', 'Vaccination records')
+            .addTag('Consent', 'Consent tokens for cross-tenant access authorization')
             .addTag('aesthetics', 'Grooming & aesthetic services')
             .addTag('grooming', 'Grooming services')
             .addTag('surgeries', 'Surgical procedures')

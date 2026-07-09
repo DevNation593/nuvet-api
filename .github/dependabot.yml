@@ -1,0 +1,50 @@
+# Dependabot config — NuVet API
+#
+# Nota: este repo usa pnpm como package manager (ver `packageManager`
+# en package.json). Como también dejamos `package-lock.json` en .gitignore,
+# dependabot.yml debe apuntar al ecosistema npm PERO sobre `pnpm-lock.yaml`.
+# Dependabot detecta automáticamente el ecosistema por la presencia del
+# lockfile — al haber solo pnpm-lock.yaml en el árbol, escaneará ese.
+#
+# Si en algún momento se vuelve a generar un package-lock.json, este
+# archivo debe revisarse (probablemente añadir `ignore` o `groups`).
+
+version: 2
+
+updates:
+  # Seguridad semanal sobre pnpm-lock.yaml
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      # Patch-level de NestJS y ecosistema relacionado se agrupa en un solo PR
+      - name: "nestjs-deps"
+        patterns:
+          - "@nestjs/*"
+          - "nestjs*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Patch-level del resto del middleware (express, helmet, etc.)
+      - name: "runtime-deps"
+        patterns:
+          - "express"
+          - "helmet"
+          - "compression"
+          - "bcryptjs"
+          - "ioredis"
+          - "passport*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
