@@ -167,34 +167,6 @@ enum ConsentAccessAction {
   REVOKE    // acción administrativa de revocación
 }
 
-// ─── Fase 2 · Membresías (monetización recurrente) ───────────────────────────
-
-enum MembershipBillingPeriod {
-  MONTHLY
-  ANNUAL
-}
-
-enum MembershipSubscriptionStatus {
-  PENDING    // creada, sin pago confirmado aún
-  ACTIVE     // vigente y generando beneficios
-  PAUSED     // suspendida temporalmente por el dueño
-  CANCELLED  // cancelada por el dueño; sigue vigente hasta fin del período actual
-  EXPIRED    // terminó el período sin renovación
-  PAST_DUE   // el último intento de cobro falló (el BillingProvider reintentará)
-}
-
-enum BillingAttemptStatus {
-  PENDING   // intento en curso
-  SUCCESS   // cobrado
-  FAILED    // rechazado; failureCode/failureMessage disponibles
-}
-
-enum BillingProviderKind {
-  MOCK       // implementación de prueba, no toca red
-  STRIPE     // implementación futura
-  PAYPHONE   // implementación futura (preferente para Ecuador)
-}
-
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Tenant {
@@ -240,9 +212,6 @@ model Tenant {
   petConsentAudits       PetConsentAudit[] @relation("PetConsentAuditTenant")
   consentTokens          ConsentToken[]  @relation("ConsentTokenTenant")
   consentAccessLogs      ConsentAccessLog[] @relation("ConsentAccessLogTenant")
-  membershipPlans         MembershipPlan[] @relation("MembershipPlanTenant")
-  membershipSubscriptions MembershipSubscription[] @relation("MembershipSubscriptionTenant")
-  billingAttempts        BillingAttempt[] @relation("BillingAttemptTenant")
 
   @@map("tenants")
 }
@@ -339,7 +308,6 @@ model User {
   consentAudits           PetConsentAudit[] @relation("PetConsentAuditActor")
   ownedConsentTokens      ConsentToken[]      @relation("ConsentTokenOwner")
   accessedConsentLogs     ConsentAccessLog[]  @relation("ConsentAccessLogAccessedBy")
-  ownedMemberships        MembershipSubscription[] @relation("MembershipSubscriptionOwner")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -418,7 +386,6 @@ model Pet {
   adoptions       Adoption[]
   consents        PetConsent[]
   consentShares   PetConsentShare[]
-  membershipSubscriptions MembershipSubscription[]
 
   @@index([tenantId])
   @@index([ownerId])
