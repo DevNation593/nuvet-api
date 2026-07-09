@@ -35,6 +35,9 @@ import { PosModule } from './pos/pos.module';
 import { BillingModule } from './billing/billing.module';
 import { AuditModule } from './audit/audit.module';
 import { ObservabilityModule } from './observability/observability.module';
+import { ConsentModule } from './consent/consent.module';
+import { PassportModule } from './passport/passport.module';
+import { MembershipsModule } from './memberships/memberships.module';
 import { appConfig } from './config/app.config';
 import { billingConfig } from './config/billing.config';
 import { databaseConfig } from './config/database.config';
@@ -90,6 +93,9 @@ import { redisConfig } from './config/redis.config';
         PosModule,
         BillingModule,
         AuditModule,
+        ConsentModule,
+        PassportModule,
+        MembershipsModule,
     ],
     providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },

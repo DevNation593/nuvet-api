@@ -20,9 +20,14 @@ describe('JwtAuthGuard', () => {
     });
 
     function createContext(headers: Record<string, string>): ExecutionContext {
+        // Importante: `getRequest()` debe devolver SIEMPRE el mismo objeto de
+        // request para que el guard pueda mutar `request.user` y `request.tenantId`
+        // y el test pueda leer esas mutaciones. Antes cada llamada devolvía un
+        // `{ headers }` nuevo, así que el test leía un objeto distinto al mutado.
+        const request = { headers };
         return {
             switchToHttp: () => ({
-                getRequest: () => ({ headers }),
+                getRequest: () => request,
             }),
             getHandler: () => ({}),
             getClass: () => ({}),

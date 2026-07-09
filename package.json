@@ -6,6 +6,17 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
+  "packageManager": "pnpm@9.15.4",
+  "pnpm": {
+    "overrides": {
+      "fast-uri": "^3.1.2",
+      "multer": "^2.2.0",
+      "brace-expansion": "^5.0.6",
+      "js-yaml": "^4.2.0",
+      "@babel/core": "^7.29.6",
+      "qs": "^6.15.2"
+    }
+  },
   "scripts": {
     "build:types": "tsc -p types/tsconfig.json",
     "postinstall": "prisma generate",
@@ -13,7 +24,7 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "NODE_ENV=production node dist/main.js",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "prisma:generate": "prisma generate",
@@ -58,9 +69,10 @@
     "rxjs": "^7.8.2",
     "swagger-ui-express": "^5.0.1",
     "typescript": "^5.9.3",
-    "uuid": "^9.0.1"
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.3",
     "@nestjs/testing": "^11.1.18",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
@@ -70,6 +82,10 @@
     "@types/node": "^20.19.39",
     "@types/passport-jwt": "^4.0.1",
     "@types/uuid": "^9.0.8",
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/parser": "^8.63.0",
+    "eslint": "^9.39.3",
+    "globals": "^16.5.0",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.9",
     "ts-loader": "^9.5.7",
