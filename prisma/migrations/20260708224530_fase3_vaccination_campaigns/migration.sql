@@ -1,4 +1,3 @@
-npm warn Unknown project config "shamefully-hoist". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
 -- CreateEnum
 CREATE TYPE "VaccinationCampaignStatus" AS ENUM ('DRAFT', 'OPEN', 'CLOSED', 'COMPLETED', 'CANCELLED');
 

@@ -32,6 +32,9 @@ export enum PermissionModule {
   BILLING = 'billing',
   // Fase 1: pasaporte médico digital + consentimiento entre clínicas.
   PASSPORT = 'passport',
+  CONSENT = 'consent',
+  // Fase 2: planes de membresía y suscripciones.
+  MEMBERSHIPS = 'memberships',
 }
 
 export enum PermissionAction {
