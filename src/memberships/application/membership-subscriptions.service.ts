@@ -21,7 +21,9 @@ import {
     SubscribeToPlanDto,
 } from './dto/membership-subscription.dto';
 import {
+    IBillingAttemptQueryRepository,
     IMembershipSubscriptionRepository,
+    BILLING_ATTEMPT_QUERY_REPOSITORY,
     MEMBERSHIP_SUBSCRIPTION_REPOSITORY,
 } from '../domain/membership.repository';
 
@@ -38,6 +40,8 @@ export class MembershipSubscriptionsService {
         private readonly repo: IMembershipSubscriptionRepository,
         @Inject(BILLING_PROVIDER)
         private readonly billingProvider: BillingProvider,
+        @Inject(BILLING_ATTEMPT_QUERY_REPOSITORY)
+        private readonly report: IBillingAttemptQueryRepository,
         private readonly prisma: PrismaService,
         private readonly passportPrisma: PassportPrismaService,
     ) {}
@@ -225,6 +229,33 @@ export class MembershipSubscriptionsService {
             {},
         );
         return { status: 'past_due' };
+    }
+
+    /**
+     * Reporte de intentos de cobro fallidos para el dashboard admin.
+     * Combina `IBillingAttemptQueryRepository` con agregaciones.
+     */
+    async getBillingFailureReport(
+        tenantId: string,
+        options: { since?: Date; page?: number; pageSize?: number } = {},
+    ) {
+        const since = options.since ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const page = Math.max(1, Math.floor(options.page ?? 1));
+        const pageSize = Math.min(100, Math.max(1, options.pageSize ?? 20));
+        const skip = (page - 1) * pageSize;
+
+        const [list, summary] = await Promise.all([
+            this.report.listFailures(tenantId, { since, skip, take: pageSize }),
+            this.report.summarizeFailures(tenantId, since),
+        ]);
+
+        return {
+            summary,
+            attempts: list.data,
+            total: list.total,
+            page,
+            pageSize,
+        };
     }
 
     private async _setStatusByOwner(

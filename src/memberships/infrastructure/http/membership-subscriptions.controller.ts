@@ -122,4 +122,30 @@ export class MembershipSubscriptionsController {
     ) {
         await this.service.cancel(user, id, { reason: 'Hard cancel from admin' });
     }
+
+    /**
+     * Reporte de intentos de cobro fallidos del tenant.
+     * Alimenta el dashboard `/clinic/billing-attempts` (Fase 2 · Slice 2).
+     */
+    @Get('billing-failures/report')
+    @Roles(UserRole.CLINIC_ADMIN, UserRole.VET, UserRole.RECEPTIONIST)
+    @Permissions(
+        `${PermissionModule.MEMBERSHIPS}:${PermissionAction.READ}`,
+    )
+    @ApiOperation({
+        summary: 'Reporte de intentos de cobro fallidos (últimos 30 días por defecto)',
+    })
+    async billingFailureReport(
+        @CurrentUser() user: JwtPayload,
+        @Query() query: { since?: string; page?: string; pageSize?: string },
+    ) {
+        const since = query.since ? new Date(query.since) : undefined;
+        const page = query.page ? Number(query.page) : undefined;
+        const pageSize = query.pageSize ? Number(query.pageSize) : undefined;
+        return this.service.getBillingFailureReport(user.tenantId, {
+            since,
+            page,
+            pageSize,
+        });
+    }
 }
