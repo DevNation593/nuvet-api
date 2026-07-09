@@ -12,8 +12,6 @@ const TENANT_SCOPED_MODELS = new Set([
     // Fase 2: tokens de consentimiento emitidos por email.
     // Tenant-scoped desde el lado del emisor (source tenant dueño del expediente).
     'ConsentToken', 'ConsentAccessLog',
-    // Fase 2 · Slice 1 (membresías MVP): catálogo, suscripciones, auditoría de cobros.
-    'MembershipPlan', 'MembershipSubscription', 'BillingAttempt',
 ]);
 
 function hasTenantId(model: string): boolean {
