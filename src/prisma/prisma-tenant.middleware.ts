@@ -3,6 +3,7 @@ import { getTenantId } from '../common/tenant-context';
 
 const TENANT_SCOPED_MODELS = new Set([
     'User', 'Pet', 'Appointment', 'MedicalRecord', 'Vaccination', 'AestheticService',
+    'VaccinationCampaign', 'VaccinationRegistration',
     'Surgery', 'Product', 'Order', 'Adoption', 'Notification', 'AuditLog',
     'ClinicHours', 'StaffSchedule', 'Block', 'Holiday', 'MedicalRecordAttachment',
     'ProductBatch', 'StockMovement', 'Payment', 'OrderItem',
@@ -12,6 +13,8 @@ const TENANT_SCOPED_MODELS = new Set([
     // Fase 2: tokens de consentimiento emitidos por email.
     // Tenant-scoped desde el lado del emisor (source tenant dueño del expediente).
     'ConsentToken', 'ConsentAccessLog',
+    // Fase 2 · Slice 1 (membresías MVP): catálogo, suscripciones, auditoría de cobros.
+    'MembershipPlan', 'MembershipSubscription', 'BillingAttempt',
 ]);
 
 function hasTenantId(model: string): boolean {

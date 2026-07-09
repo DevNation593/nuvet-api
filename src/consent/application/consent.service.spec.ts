@@ -1,95 +1,86 @@
+import { Test } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import {
-    ConsentAccessAction,
-    ConsentTokenScope,
-    ConsentTokenStatus,
-} from '@prisma/client';
-import { JwtPayload, UserRole } from '@nuvet/types';
-import { ConsentService, RequestContext } from './consent.service';
+import { ConsentScope, ConsentStatus, ConsentAuditAction, UserRole } from '@prisma/client';
+import { ConsentService } from './consent.service';
 import { ConsentAuditWriter } from './consent-audit.writer';
 import {
+    CONSENT_REPOSITORY,
+    ConsentWithRelations,
     IConsentRepository,
 } from '../domain/consent.repository';
+import { PrismaService } from '../../prisma/prisma.service';
+import { PassportPrismaService } from '../../prisma/passport-prisma.service';
 
 /**
- * Tests unitarios de `ConsentService` (Fase 2).
+ * Tests unitarios de `ConsentService` (Fase 2 — v1: modelo grant-based).
  *
- * Cobertura mínima exigida por la consigna:
- *   1. issueToken + validateToken positivo produce una entrada en
- *      `ConsentAccessLog` con action=VALIDATE.
- *   2. validateToken sobre un token expirado lanza `ForbiddenException`.
- *   3. validateToken sobre un token de otro tenant (mock devuelve null,
- *      simulando cross-tenant) lanza `NotFoundException`.
+ * Cubre las reglas de negocio críticas del pasaporte digital:
+ *   1. grant (owner)         → ok + audit GRANTED
+ *   2. grant (staff tenant)  → ok
+ *   3. grant (other tenant)  → ForbiddenException
+ *   4. grant (no encontrado) → NotFoundException
+ *   5. grant (same tenant)   → BadRequestException
+ *   6. grant (target inactivo) → BadRequestException
+ *   7. grant (expiresAt pasado) → BadRequestException
+ *   8. revoke (owner)        → ok + audit REVOKED
+ *   9. revoke (no owner)     → ForbiddenException
+ *  10. revoke (ya revocado)  → no re-audita
+ *  11. listMine (CLIENT)     → llama findByOwner
+ *  12. listMine (staff sin petId) → vacío
+ *  13. listMine (staff con petId) → llama findByPet
+ *  14. recordAccess          → delega al writer con action=ACCESSED
  *
- * Bonus:
- *   4. validateToken sobre un token revocado lanza `ForbiddenException`.
- *   5. revokeToken emite una entrada de log con action=REVOKE.
- *
- * Cobertura adicional añadida por qa-agent:
- *   6. listAccessLogs pagina y serializa correctamente (`skip/take`,
- *      meta.totalPages, `createdAt` ISO).
- *   7. listAccessLogs traduce los filtros opcionales del DTO al filtro
- *      del repositorio (`tokenId`, `action`, `from`, `to`).
- *   8. listAccessLogs sin filtros usa defaults (page=1, limit=20).
- *   9. issueToken valida la ventana de expiración (pasado, > 90 días).
- *  10. issueToken rechaza petIds fuera del tenant.
- *  11. issueToken rechaza roles no autorizados (no CLIENT ni staff).
- *  12. revokeToken: un cliente no puede revocar tokens ajenos.
- *  13. revokeToken: staff de otro tenant no puede revocar tokens
- *      (chequeo explícito cross-tenant).
- *
- * El repositorio (`IConsentRepository`) y el writer (`ConsentAuditWriter`)
- * se mockean a mano para no depender de Postgres. Patrón inspirado en
- * `passport.service.spec.ts`.
+ * El repositorio, PrismaService, PassportPrismaService y el writer se
+ * mockean a mano para no depender de Postgres.
  */
 
 const TENANT_A = '11111111-1111-1111-1111-111111111111';
 const TENANT_B = '22222222-2222-2222-2222-222222222222';
 const OWNER_USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const PET_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+const TARGET_TENANT_ID = TENANT_B;
 
-const CLIENT_ACTOR: JwtPayload = {
+const CLIENT_ACTOR = {
     sub: OWNER_USER_ID,
     tenantId: TENANT_A,
-    email: 'owner@clinic-a.test',
     role: UserRole.CLIENT,
 };
 
-const VET_TENANT_A: JwtPayload = {
+const VET_TENANT_A = {
     sub: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
     tenantId: TENANT_A,
-    email: 'vet@clinic-a.test',
     role: UserRole.VET,
 };
 
-function makeToken(overrides: Partial<{
-    id: string;
-    tenantId: string;
-    ownerUserId: string;
-    granteeEmail: string;
-    granteeTenantId: string | null;
-    scope: ConsentTokenScope;
-    petIds: string[];
-    status: ConsentTokenStatus;
-    expiresAt: Date;
-    createdAt: Date;
-    revokedAt: Date | null;
-    auditReason: string | null;
-}> = {}) {
+function makePet(overrides: Partial<{ id: string; tenantId: string; ownerId: string; isActive: boolean }> = {}) {
+    return {
+        id: PET_ID,
+        tenantId: TENANT_A,
+        ownerId: OWNER_USER_ID,
+        isActive: true,
+        ...overrides,
+    };
+}
+
+function makeConsent(overrides: Partial<ConsentWithRelations> = {}): ConsentWithRelations {
     const now = new Date();
     return {
-        id: 't-1',
+        id: 'consent-1',
         tenantId: TENANT_A,
-        ownerUserId: OWNER_USER_ID,
-        granteeEmail: 'grantee@other-clinic.com',
-        granteeTenantId: null,
-        scope: ConsentTokenScope.READ,
-        petIds: [PET_ID],
-        status: ConsentTokenStatus.ACTIVE,
-        expiresAt: new Date(now.getTime() + 60_000),
-        createdAt: now,
+        sourceTenantId: TENANT_A,
+        petId: PET_ID,
+        ownerId: OWNER_USER_ID,
+        targetTenantId: TARGET_TENANT_ID,
+        targetClinicName: 'Clínica B',
+        status: ConsentStatus.GRANTED,
+        scopes: [ConsentScope.PASSPORT_READ],
+        message: null,
+        grantedAt: now,
+        expiresAt: null,
         revokedAt: null,
-        auditReason: null,
+        revokeReason: null,
+        createdAt: now,
+        updatedAt: now,
         ...overrides,
     };
 }
@@ -97,444 +88,328 @@ function makeToken(overrides: Partial<{
 interface MockSet {
     service: ConsentService;
     repo: jest.Mocked<IConsentRepository>;
-    auditWriter: jest.Mocked<ConsentAuditWriter>;
+    prisma: { pet: { findFirst: jest.Mock } };
+    passportPrisma: { client: { tenant: { findUnique: jest.Mock } } };
+    auditWriter: { write: jest.Mock };
 }
 
-function buildService(opts: {
-    findPetsResult?: Array<{ id: string }>;
-    createTokenResult?: ReturnType<typeof makeToken>;
-} = {}): MockSet {
-    const findPets = jest
-        .fn()
-        .mockResolvedValue(opts.findPetsResult ?? []);
-    const createToken = jest
-        .fn()
-        .mockResolvedValue(
-            opts.createTokenResult ??
-                makeToken({ id: 't-created' }),
-        );
-    const findTokenById = jest.fn();
-    const updateToken = jest
-        .fn()
-        .mockImplementation((_tid, _id, input) =>
-            Promise.resolve(makeToken({ id: 't-updated', revokedAt: input.revokedAt ?? null })),
-        );
-
+async function buildService(): Promise<MockSet> {
     const repo: jest.Mocked<IConsentRepository> = {
-        findTokenById: findTokenById as unknown as jest.Mocked<IConsentRepository>['findTokenById'],
-        createToken: createToken as unknown as jest.Mocked<IConsentRepository>['createToken'],
-        updateToken: updateToken as unknown as jest.Mocked<IConsentRepository>['updateToken'],
-        findPetsNotInTenant: findPets as unknown as jest.Mocked<IConsentRepository>['findPetsNotInTenant'],
-        createAccessLog: jest
-            .fn()
-            .mockResolvedValue({
-                id: 'log-1',
-                tenantId: TENANT_A,
-                consentTokenId: 't-1',
-                accessedByUserId: OWNER_USER_ID,
-                accessedByTenantId: TENANT_A,
-                action: ConsentAccessAction.VALIDATE,
-                ipAddress: null,
-                userAgent: null,
-                createdAt: new Date(),
-            }),
-        listAccessLogs: jest
-            .fn()
-            .mockResolvedValue({ data: [], total: 0 }),
+        findOne: jest.fn(),
+        findOneGlobal: jest.fn(),
+        findByOwner: jest.fn(),
+        findByPet: jest.fn(),
+        findActiveGrant: jest.fn(),
+        countActiveGrantsForPetTarget: jest.fn(),
+        upsertGrant: jest.fn(),
+        revoke: jest.fn(),
+    } as unknown as jest.Mocked<IConsentRepository>;
+
+    const petFindFirst = jest.fn();
+    const tenantFindUnique = jest.fn();
+
+    const auditWriter = { write: jest.fn().mockResolvedValue(undefined) };
+
+    const moduleRef = await Test.createTestingModule({
+        providers: [
+            ConsentService,
+            { provide: CONSENT_REPOSITORY, useValue: repo },
+            {
+                provide: PrismaService,
+                useValue: { pet: { findFirst: petFindFirst } },
+            },
+            {
+                provide: PassportPrismaService,
+                useValue: { client: { tenant: { findUnique: tenantFindUnique } } },
+            },
+            { provide: ConsentAuditWriter, useValue: auditWriter },
+        ],
+    }).compile();
+
+    const service = moduleRef.get(ConsentService);
+    return {
+        service,
+        repo,
+        prisma: { pet: { findFirst: petFindFirst } },
+        passportPrisma: { client: { tenant: { findUnique: tenantFindUnique } } },
+        auditWriter,
     };
-
-    const auditWriter = {
-        write: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<ConsentAuditWriter>;
-
-    // Inyectar manualmente con `@Inject(CONSENT_REPOSITORY)` emulado.
-    const service = new ConsentService(
-        repo as unknown as IConsentRepository,
-        auditWriter as unknown as ConsentAuditWriter,
-    );
-
-    return { service, repo, auditWriter };
 }
 
-const ctx: RequestContext = { ipAddress: '127.0.0.1', userAgent: 'jest' };
+const ctx = { ipAddress: '127.0.0.1', userAgent: 'jest' };
 
-describe('ConsentService', () => {
-    // ── 1) issueToken + validateToken → access log ──────────────────────────
-    it('issueToken + validateToken positivo produce un access log con action=VALIDATE', async () => {
-        const { service, repo, auditWriter } = buildService({
-            findPetsResult: [],
+describe('ConsentService (v1: grant-based)', () => {
+    // ── grant: casos felices ─────────────────────────────────────────────────
+    it('grant por owner: persiste + audita GRANTED', async () => {
+        const { service, repo, prisma, passportPrisma, auditWriter } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(makePet());
+        passportPrisma.client.tenant.findUnique.mockResolvedValueOnce({
+            id: TARGET_TENANT_ID,
+            name: 'Clínica B',
+            isActive: true,
         });
-        // El primer token "creado" y luego "encontrado".
-        const created = makeToken({
-            id: 't-fresh',
-            ownerUserId: CLIENT_ACTOR.sub,
-            status: ConsentTokenStatus.ACTIVE,
-            expiresAt: new Date(Date.now() + 60_000),
-        });
-        // 1) createToken devuelve el token recién creado.
-        repo.createToken.mockResolvedValueOnce(created);
-        // 2) findTokenById (en validateToken) devuelve el mismo token.
-        repo.findTokenById.mockResolvedValueOnce(created);
+        const created = makeConsent();
+        repo.upsertGrant.mockResolvedValueOnce(created);
 
-        const issued = await service.issueToken(
+        const result = await service.grant(
             CLIENT_ACTOR,
             {
-                ownerUserId: CLIENT_ACTOR.sub,
-                granteeEmail: 'grantee@other-clinic.com',
-                scope: ConsentTokenScope.READ,
-                petIds: [PET_ID],
-                expiresAt: created.expiresAt.toISOString(),
+                petId: PET_ID,
+                targetTenantId: TARGET_TENANT_ID,
             },
             ctx,
         );
 
-        expect(issued.id).toBe('t-fresh');
-        expect(issued.status).toBe(ConsentTokenStatus.ACTIVE);
+        expect(result.id).toBe('consent-1');
+        expect(result.status).toBe(ConsentStatus.GRANTED);
+        expect(repo.upsertGrant).toHaveBeenCalledTimes(1);
+        expect(auditWriter.write).toHaveBeenCalledTimes(1);
+        const auditArg = auditWriter.write.mock.calls[0][0];
+        expect(auditArg.action).toBe(ConsentAuditAction.GRANTED);
+        expect(auditArg.consentId).toBe('consent-1');
+        expect(auditArg.actorUserId).toBe(CLIENT_ACTOR.sub);
+        expect(auditArg.tenantId).toBe(TENANT_A);
+    });
 
-        const validated = await service.validateToken(
-            CLIENT_ACTOR,
-            { tokenId: 't-fresh' },
+    it('grant por staff del tenant: persiste + audita', async () => {
+        const { service, repo, prisma, passportPrisma, auditWriter } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(makePet());
+        passportPrisma.client.tenant.findUnique.mockResolvedValueOnce({
+            id: TARGET_TENANT_ID,
+            name: 'Clínica B',
+            isActive: true,
+        });
+        repo.upsertGrant.mockResolvedValueOnce(makeConsent());
+        auditWriter.write.mockClear();
+
+        await service.grant(
+            VET_TENANT_A,
+            { petId: PET_ID, targetTenantId: TARGET_TENANT_ID },
             ctx,
         );
 
-        expect(validated.id).toBe('t-fresh');
-        expect(validated.expiresAt).toBe(created.expiresAt.toISOString());
-
-        // El writer se llamó una vez (en validateToken).
+        expect(repo.upsertGrant).toHaveBeenCalledTimes(1);
         expect(auditWriter.write).toHaveBeenCalledTimes(1);
-        const callArg = auditWriter.write.mock.calls[0][0];
-        expect(callArg.action).toBe(ConsentAccessAction.VALIDATE);
-        expect(callArg.consentTokenId).toBe('t-fresh');
-        expect(callArg.accessedByUserId).toBe(CLIENT_ACTOR.sub);
-        expect(callArg.tenantId).toBe(CLIENT_ACTOR.tenantId);
     });
 
-    // ── 2) Expired token ────────────────────────────────────────────────────
-    it('validateToken sobre un token expirado lanza ForbiddenException', async () => {
-        const { service, repo, auditWriter } = buildService();
-        const expiredToken = makeToken({
-            id: 't-expired',
-            status: ConsentTokenStatus.EXPIRED,
-            expiresAt: new Date(Date.now() - 60_000),
-        });
-        repo.findTokenById.mockResolvedValueOnce(expiredToken);
+    // ── grant: errores de autorización ──────────────────────────────────────
+    it('grant: cliente que no es dueño y no es staff → ForbiddenException', async () => {
+        const { service, prisma, repo, auditWriter } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(makePet());
 
-        await expect(
-            service.validateToken(
-                VET_TENANT_A,
-                { tokenId: 't-expired' },
-                ctx,
-            ),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-
-        // Aunque falle, debe dejar constancia en el log (intento de uso).
-        expect(auditWriter.write).toHaveBeenCalledTimes(1);
-        expect(auditWriter.write.mock.calls[0][0].action).toBe(
-            ConsentAccessAction.VALIDATE,
-        );
-    });
-
-    // ── 3) Cross-tenant → NotFound ─────────────────────────────────────────
-    it('validateToken sobre un token de otro tenant lanza NotFoundException', async () => {
-        const { service, repo, auditWriter } = buildService();
-        // El middleware Prisma scopea por tenant: si el token pertenece a
-        // otro tenant, findFirst devuelve null. Simulamos eso devolviendo null.
-        repo.findTokenById.mockResolvedValueOnce(null);
-
-        // El actor pertenece a TENANT_B (vet cross-tenant).
-        const actorOtherTenant: JwtPayload = {
-            sub: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
-            tenantId: TENANT_B,
-            email: 'vet-other@clinic-b.test',
-            role: UserRole.VET,
+        const otherClient = {
+            sub: '99999999-9999-9999-9999-999999999999', // ≠ owner
+            tenantId: TENANT_A,
+            role: UserRole.CLIENT,
         };
 
         await expect(
-            service.validateToken(
-                actorOtherTenant,
-                { tokenId: 'cross-tenant-token' },
+            service.grant(
+                otherClient,
+                { petId: PET_ID, targetTenantId: TARGET_TENANT_ID },
                 ctx,
             ),
-        ).rejects.toBeInstanceOf(NotFoundException);
-
-        // Sin log porque ni siquiera llegamos a registrar el intento (no
-        // encontramos el token). Esto preserva la no-leak de información:
-        // un atacante no puede distinguir "no existe" de "pertenece a otro tenant".
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repo.upsertGrant).not.toHaveBeenCalled();
         expect(auditWriter.write).not.toHaveBeenCalled();
     });
 
-    // ── 4) Bonus: token REVOKED → Forbidden ────────────────────────────────
-    it('validateToken sobre un token revocado lanza ForbiddenException', async () => {
-        const { service, repo } = buildService();
-        const revokedToken = makeToken({
-            id: 't-revoked',
-            status: ConsentTokenStatus.REVOKED,
-            revokedAt: new Date(Date.now() - 1000),
-        });
-        repo.findTokenById.mockResolvedValueOnce(revokedToken);
+    it('grant: staff de otro tenant → ForbiddenException', async () => {
+        const { service, prisma, repo, auditWriter } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(makePet());
 
-        await expect(
-            service.validateToken(
-                VET_TENANT_A,
-                { tokenId: 't-revoked' },
-                ctx,
-            ),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-    });
-
-    // ── 5) Bonus: revokeToken emite log con action=REVOKE ───────────────────
-    it('revokeToken emite un access log con action=REVOKE', async () => {
-        const { service, repo, auditWriter } = buildService();
-        const existing = makeToken({ id: 't-to-revoke' });
-        const updated = makeToken({
-            id: 't-to-revoke',
-            status: ConsentTokenStatus.REVOKED,
-            revokedAt: new Date(),
-        });
-        repo.findTokenById.mockResolvedValueOnce(existing);
-        repo.updateToken.mockResolvedValueOnce(updated);
-
-        const result = await service.revokeToken(
-            VET_TENANT_A,
-            't-to-revoke',
-            { auditReason: 'owner requested' },
-            ctx,
-        );
-
-        expect(result.status).toBe(ConsentTokenStatus.REVOKED);
-        expect(auditWriter.write).toHaveBeenCalledTimes(1);
-        expect(auditWriter.write.mock.calls[0][0].action).toBe(
-            ConsentAccessAction.REVOKE,
-        );
-    });
-
-    // ── 6) listAccessLogs: paginación y filtros ──────────────────────────────
-    it('listAccessLogs pagina correctamente y aplica skip/take', async () => {
-        const { service, repo } = buildService();
-        const sampleLog = {
-            id: 'log-42',
-            tenantId: TENANT_A,
-            consentTokenId: 't-1',
-            accessedByUserId: OWNER_USER_ID,
-            accessedByTenantId: TENANT_A,
-            action: ConsentAccessAction.READ,
-            ipAddress: '127.0.0.1',
-            userAgent: 'jest',
-            createdAt: new Date('2026-07-07T10:00:00.000Z'),
-        };
-        repo.listAccessLogs.mockResolvedValueOnce({
-            data: [sampleLog],
-            total: 41,
-        });
-
-        const result = await service.listAccessLogs(VET_TENANT_A, {
-            page: 2,
-            limit: 20,
-        });
-
-        // El repo debe recibir skip=20, take=20.
-        expect(repo.listAccessLogs).toHaveBeenCalledWith(
-            TENANT_A,
-            {},
-            { skip: 20, take: 20 },
-        );
-        expect(result.success).toBe(true);
-        expect(result.data).toHaveLength(1);
-        expect(result.data[0]).toMatchObject({
-            id: 'log-42',
-            tenantId: TENANT_A,
-            consentTokenId: 't-1',
-            action: ConsentAccessAction.READ,
-        });
-        // createdAt debe serializarse como ISO string.
-        expect(result.data[0].createdAt).toBe(
-            '2026-07-07T10:00:00.000Z',
-        );
-        expect(result.meta).toEqual({
-            page: 2,
-            limit: 20,
-            total: 41,
-            totalPages: 3, // ceil(41 / 20) = 3
-            hasNextPage: true,
-            hasPrevPage: true,
-        });
-    });
-
-    it('listAccessLogs traduce filtros del DTO al filter del repositorio', async () => {
-        const { service, repo } = buildService();
-        repo.listAccessLogs.mockResolvedValueOnce({ data: [], total: 0 });
-
-        await service.listAccessLogs(VET_TENANT_A, {
-            page: 1,
-            limit: 10,
-            tokenId: 't-filter',
-            action: ConsentAccessAction.REVOKE,
-            from: '2026-07-01T00:00:00.000Z',
-            to: '2026-07-31T23:59:59.999Z',
-        });
-
-        expect(repo.listAccessLogs).toHaveBeenCalledWith(
-            TENANT_A,
-            {
-                tokenId: 't-filter',
-                action: ConsentAccessAction.REVOKE,
-                from: new Date('2026-07-01T00:00:00.000Z'),
-                to: new Date('2026-07-31T23:59:59.999Z'),
-            },
-            { skip: 0, take: 10 },
-        );
-    });
-
-    it('listAccessLogs sin filtros usa filter vacío y defaults de paginación', async () => {
-        const { service, repo } = buildService();
-        repo.listAccessLogs.mockResolvedValueOnce({ data: [], total: 0 });
-
-        const result = await service.listAccessLogs(VET_TENANT_A, {});
-
-        expect(repo.listAccessLogs).toHaveBeenCalledWith(
-            TENANT_A,
-            {},
-            { skip: 0, take: 20 }, // defaults: page=1, limit=20
-        );
-        expect(result.meta.totalPages).toBe(0);
-        expect(result.meta.hasNextPage).toBe(false);
-        expect(result.meta.hasPrevPage).toBe(false);
-    });
-
-    // ── 7) Bonus: issueToken valida expiresAt en el pasado ─────────────────
-    it('issueToken rechaza expiresAt en el pasado con BadRequestException', async () => {
-        const { service } = buildService();
-        const past = new Date(Date.now() - 60_000).toISOString();
-
-        await expect(
-            service.issueToken(
-                CLIENT_ACTOR,
-                {
-                    ownerUserId: CLIENT_ACTOR.sub,
-                    granteeEmail: 'grantee@other-clinic.com',
-                    scope: ConsentTokenScope.READ,
-                    petIds: [PET_ID],
-                    expiresAt: past,
-                },
-                ctx,
-            ),
-        ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('issueToken rechaza expiresAt a más de 90 días con BadRequestException', async () => {
-        const { service } = buildService();
-        const farFuture = new Date(
-            Date.now() + 91 * 24 * 60 * 60 * 1000,
-        ).toISOString();
-
-        await expect(
-            service.issueToken(
-                CLIENT_ACTOR,
-                {
-                    ownerUserId: CLIENT_ACTOR.sub,
-                    granteeEmail: 'grantee@other-clinic.com',
-                    scope: ConsentTokenScope.READ,
-                    petIds: [PET_ID],
-                    expiresAt: farFuture,
-                },
-                ctx,
-            ),
-        ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('issueToken rechaza petIds que no pertenecen al tenant', async () => {
-        const { service, repo } = buildService({
-            // Simula que el repo reportó 1 pet como "fuera del tenant".
-            findPetsResult: [{ id: PET_ID }],
-        });
-
-        await expect(
-            service.issueToken(
-                CLIENT_ACTOR,
-                {
-                    ownerUserId: CLIENT_ACTOR.sub,
-                    granteeEmail: 'grantee@other-clinic.com',
-                    scope: ConsentTokenScope.READ,
-                    petIds: [PET_ID],
-                    expiresAt: new Date(
-                        Date.now() + 60_000,
-                    ).toISOString(),
-                },
-                ctx,
-            ),
-        ).rejects.toBeInstanceOf(BadRequestException);
-
-        // No se debe haber creado ningún token.
-        expect(repo.createToken).not.toHaveBeenCalled();
-    });
-
-    it('issueToken rechaza roles que no son CLIENT ni staff del tenant', async () => {
-        const { service } = buildService();
-        const otherActor: JwtPayload = {
-            ...VET_TENANT_A,
-            // Un rol inventado sólo para el test.
-            role: 'AUDITOR' as unknown as UserRole,
-        };
-
-        await expect(
-            service.issueToken(
-                otherActor,
-                {
-                    ownerUserId: OWNER_USER_ID,
-                    granteeEmail: 'grantee@other-clinic.com',
-                    scope: ConsentTokenScope.READ,
-                    petIds: [PET_ID],
-                    expiresAt: new Date(
-                        Date.now() + 60_000,
-                    ).toISOString(),
-                },
-                ctx,
-            ),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-    });
-
-    // ── 8) revokeToken: cliente no-dueño no puede revocar ───────────────────
-    it('revokeToken impide a un cliente revocar un token que no es suyo', async () => {
-        const { service, repo } = buildService();
-        const existing = makeToken({
-            id: 't-other',
-            ownerUserId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
-        });
-        repo.findTokenById.mockResolvedValueOnce(existing);
-
-        await expect(
-            service.revokeToken(
-                CLIENT_ACTOR,
-                't-other',
-                {},
-                ctx,
-            ),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-    });
-
-    it('revokeToken impide a staff de otro tenant revocar el token', async () => {
-        const { service, repo } = buildService();
-        const existing = makeToken({
-            id: 't-foreign',
-            tenantId: TENANT_A,
-            ownerUserId: OWNER_USER_ID,
-        });
-        repo.findTokenById.mockResolvedValueOnce(existing);
-
-        const otherTenantStaff: JwtPayload = {
+        const crossTenantStaff = {
             sub: '99999999-9999-9999-9999-999999999999',
-            tenantId: TENANT_B,
-            email: 'vet@clinic-b.test',
+            tenantId: TENANT_B, // distinto del tenant del pet
             role: UserRole.VET,
         };
 
         await expect(
-            service.revokeToken(
-                otherTenantStaff,
-                't-foreign',
-                {},
+            service.grant(
+                crossTenantStaff,
+                { petId: PET_ID, targetTenantId: TARGET_TENANT_ID },
                 ctx,
             ),
         ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repo.upsertGrant).not.toHaveBeenCalled();
+        expect(auditWriter.write).not.toHaveBeenCalled();
+    });
+
+    // ── grant: errores de validación ─────────────────────────────────────────
+    it('grant: pet inexistente → NotFoundException', async () => {
+        const { service, prisma, repo } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(null);
+
+        await expect(
+            service.grant(
+                CLIENT_ACTOR,
+                { petId: PET_ID, targetTenantId: TARGET_TENANT_ID },
+                ctx,
+            ),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(repo.upsertGrant).not.toHaveBeenCalled();
+    });
+
+    it('grant: target = mismo tenant → BadRequestException', async () => {
+        const { service, prisma, repo } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(makePet());
+
+        await expect(
+            service.grant(
+                CLIENT_ACTOR,
+                { petId: PET_ID, targetTenantId: TENANT_A }, // mismo tenant
+                ctx,
+            ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repo.upsertGrant).not.toHaveBeenCalled();
+    });
+
+    it('grant: target tenant inactivo → BadRequestException', async () => {
+        const { service, prisma, passportPrisma, repo } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(makePet());
+        passportPrisma.client.tenant.findUnique.mockResolvedValueOnce({
+            id: TARGET_TENANT_ID,
+            name: 'Clínica Cerrada',
+            isActive: false,
+        });
+
+        await expect(
+            service.grant(
+                CLIENT_ACTOR,
+                { petId: PET_ID, targetTenantId: TARGET_TENANT_ID },
+                ctx,
+            ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repo.upsertGrant).not.toHaveBeenCalled();
+    });
+
+    it('grant: expiresAt en el pasado → BadRequestException', async () => {
+        const { service, prisma, passportPrisma, repo } = await buildService();
+        prisma.pet.findFirst.mockResolvedValueOnce(makePet());
+        passportPrisma.client.tenant.findUnique.mockResolvedValueOnce({
+            id: TARGET_TENANT_ID,
+            name: 'Clínica B',
+            isActive: true,
+        });
+
+        const past = new Date(Date.now() - 60_000).toISOString();
+        await expect(
+            service.grant(
+                CLIENT_ACTOR,
+                { petId: PET_ID, targetTenantId: TARGET_TENANT_ID, expiresAt: past },
+                ctx,
+            ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repo.upsertGrant).not.toHaveBeenCalled();
+    });
+
+    // ── revoke ───────────────────────────────────────────────────────────────
+    it('revoke por owner: marca REVOKED + audita', async () => {
+        const { service, repo, auditWriter } = await buildService();
+        const existing = makeConsent();
+        const revoked = makeConsent({ status: ConsentStatus.REVOKED, revokedAt: new Date() });
+        repo.findOneGlobal.mockResolvedValueOnce(existing);
+        repo.revoke.mockResolvedValueOnce(revoked);
+
+        const result = await service.revoke(
+            CLIENT_ACTOR,
+            'consent-1',
+            { reason: 'owner requested' },
+            ctx,
+        );
+
+        expect(result.status).toBe(ConsentStatus.REVOKED);
+        expect(repo.revoke).toHaveBeenCalledTimes(1);
+        expect(auditWriter.write).toHaveBeenCalledTimes(1);
+        const auditArg = auditWriter.write.mock.calls[0][0];
+        expect(auditArg.action).toBe(ConsentAuditAction.REVOKED);
+        expect(auditArg.metadata?.['reason']).toBe('owner requested');
+    });
+
+    it('revoke: cliente que no es dueño y no es staff → ForbiddenException', async () => {
+        const { service, repo, auditWriter } = await buildService();
+        repo.findOneGlobal.mockResolvedValueOnce(
+            makeConsent({ ownerId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' }),
+        );
+
+        await expect(
+            service.revoke(CLIENT_ACTOR, 'consent-1', {}, ctx),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repo.revoke).not.toHaveBeenCalled();
+        expect(auditWriter.write).not.toHaveBeenCalled();
+    });
+
+    it('revoke sobre consentimiento ya revocado: idempotente, no re-audita', async () => {
+        const { service, repo, auditWriter } = await buildService();
+        const alreadyRevoked = makeConsent({ status: ConsentStatus.REVOKED });
+        repo.findOneGlobal.mockResolvedValueOnce(alreadyRevoked);
+
+        const result = await service.revoke(CLIENT_ACTOR, 'consent-1', {}, ctx);
+
+        expect(result.status).toBe(ConsentStatus.REVOKED);
+        expect(repo.revoke).not.toHaveBeenCalled();
+        expect(auditWriter.write).not.toHaveBeenCalled();
+    });
+
+    // ── listMine ─────────────────────────────────────────────────────────────
+    it('listMine como CLIENT → usa findByOwner', async () => {
+        const { service, repo } = await buildService();
+        const consent = makeConsent();
+        repo.findByOwner.mockResolvedValueOnce({ data: [consent], total: 1 });
+
+        const result = await service.listMine(CLIENT_ACTOR, {}, { skip: 0, take: 20 });
+
+        expect(repo.findByOwner).toHaveBeenCalledWith(OWNER_USER_ID, {}, { skip: 0, take: 20 });
+        expect(result.total).toBe(1);
+        expect(result.data).toHaveLength(1);
+        expect(repo.findByPet).not.toHaveBeenCalled();
+    });
+
+    it('listMine como staff sin petId → no consulta repo, devuelve vacío', async () => {
+        const { service, repo } = await buildService();
+
+        const result = await service.listMine(VET_TENANT_A, {}, { skip: 0, take: 20 });
+
+        expect(result.data).toEqual([]);
+        expect(result.total).toBe(0);
+        expect(repo.findByOwner).not.toHaveBeenCalled();
+        expect(repo.findByPet).not.toHaveBeenCalled();
+    });
+
+    it('listMine como staff con petId → usa findByPet', async () => {
+        const { service, repo } = await buildService();
+        const consent = makeConsent();
+        repo.findByPet.mockResolvedValueOnce({ data: [consent], total: 1 });
+
+        const result = await service.listMine(
+            VET_TENANT_A,
+            { petId: PET_ID },
+            { skip: 0, take: 20 },
+        );
+
+        expect(repo.findByPet).toHaveBeenCalledWith(TENANT_A, PET_ID, { skip: 0, take: 20 });
+        expect(result.total).toBe(1);
+        expect(result.data).toHaveLength(1);
+        expect(repo.findByOwner).not.toHaveBeenCalled();
+    });
+
+    // ── recordAccess ─────────────────────────────────────────────────────────
+    it('recordAccess delega al writer con action=ACCESSED', async () => {
+        const { service, auditWriter } = await buildService();
+
+        await service.recordAccess({
+            tenantId: TENANT_A,
+            consentId: 'consent-1',
+            actorUserId: 'user-1',
+            actorTenantId: TENANT_B,
+            ipAddress: '1.2.3.4',
+        });
+
+        expect(auditWriter.write).toHaveBeenCalledTimes(1);
+        const arg = auditWriter.write.mock.calls[0][0];
+        expect(arg.action).toBe(ConsentAuditAction.ACCESSED);
+        expect(arg.consentId).toBe('consent-1');
+        expect(arg.tenantId).toBe(TENANT_A);
+        expect(arg.ipAddress).toBe('1.2.3.4');
     });
 });
