@@ -69,6 +69,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.REPORTS}:${PermissionAction.READ}`,
     `${PermissionModule.FILES}:${PermissionAction.READ}`,
     `${PermissionModule.FILES}:${PermissionAction.CREATE}`,
+    // Fase 2: vets validan tokens de consentimiento al atender cross-clinic.
+    `${PermissionModule.CONSENT}:${PermissionAction.READ}`,
+    `${PermissionModule.CONSENT}:${PermissionAction.UPDATE}`,
   ],
   [UserRole.RECEPTIONIST]: [
     ...permissionsForModule(PermissionModule.APPOINTMENTS),
@@ -129,6 +132,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.ADOPTIONS}:${PermissionAction.CREATE}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.UPDATE}`,
+    // Fase 2: el dueño de la mascota emite/revoca/consulta sus propios tokens.
+    ...permissionsForModule(PermissionModule.CONSENT),
   ],
 };
 
@@ -327,6 +332,8 @@ export const PLAN_MODULES: Record<TenantPlan, PermissionModule[]> = {
     PermissionModule.REPORTS,
     PermissionModule.FILES,
     PermissionModule.BILLING,
+    PermissionModule.PASSPORT,
+    PermissionModule.CONSENT,
   ],
   [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };
