@@ -3,7 +3,7 @@ import { getTenantId } from '../common/tenant-context';
 
 const TENANT_SCOPED_MODELS = new Set([
     'User', 'Pet', 'Appointment', 'MedicalRecord', 'Vaccination', 'AestheticService',
-    'VaccinationCampaign', 'VaccinationRegistration',
+    'VaccinationCampaign', 'VaccinationRegistration', 'HomeVetBooking',
     'Surgery', 'Product', 'Order', 'Adoption', 'Notification', 'AuditLog',
     'ClinicHours', 'StaffSchedule', 'Block', 'Holiday', 'MedicalRecordAttachment',
     'ProductBatch', 'StockMovement', 'Payment', 'OrderItem',
