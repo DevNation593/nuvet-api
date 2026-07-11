@@ -18,6 +18,7 @@ import { PetsModule } from './pets/pets.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { VaccinationsModule } from './vaccinations/vaccinations.module';
+import { HomeVetModule } from './home-vet/home-vet.module';
 import { AestheticsModule } from './aesthetics/aesthetics.module';
 import { GroomingModule } from './grooming/grooming.module';
 import { SurgeriesModule } from './surgeries/surgeries.module';
@@ -78,6 +79,7 @@ import { redisConfig } from './config/redis.config';
         AppointmentsModule,
         MedicalRecordsModule,
         VaccinationsModule,
+        HomeVetModule,
         AestheticsModule,
         GroomingModule,
         SurgeriesModule,

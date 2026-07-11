@@ -732,3 +732,93 @@ export interface MarkRegistrationAttendedRequest {
     attendedAt?: string;
     notes?: string;
 }
+
+// ─── Fase 3 · Slice 2 · Veterinario a domicilio ──────────────────────────────
+
+export type ApiHomeVetBookingStatus =
+    | 'REQUESTED'
+    | 'CONFIRMED'
+    | 'EN_ROUTE'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'NO_SHOW';
+
+export interface HomeVetBooking {
+    id: string;
+    tenantId: string;
+    ownerId: string;
+    petId: string;
+    vetId: string | null;
+    scheduledAt: string;
+    address: string;
+    addressNotes: string | null;
+    reason: string;
+    status: ApiHomeVetBookingStatus;
+    visitFeeCents: number;
+    travelFeeCents: number;
+    totalCents: number;
+    currency: string;
+    visitNotes: string | null;
+    diagnosis: string | null;
+    internalNotes: string | null;
+    cancelReason: string | null;
+    cancelledAt: string | null;
+    completedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    pet?: { id: string; name: string; species: string };
+    owner?: { id: string; firstName: string; lastName: string; email: string };
+    vet?: { id: string; firstName: string; lastName: string } | null;
+}
+
+export interface CreateHomeVetBookingRequest {
+    petId: string;
+    scheduledAt: string;
+    address: string;
+    addressNotes?: string;
+    reason: string;
+    visitFeeCents?: number;
+    travelFeeCents?: number;
+    totalCents?: number;
+    currency?: string;
+    ownerId?: string;
+}
+
+export interface UpdateHomeVetBookingRequest {
+    scheduledAt?: string;
+    address?: string;
+    addressNotes?: string;
+    reason?: string;
+    visitFeeCents?: number;
+    travelFeeCents?: number;
+    totalCents?: number;
+    currency?: string;
+    visitNotes?: string;
+    diagnosis?: string;
+    internalNotes?: string;
+}
+
+export interface AssignVetRequest {
+    vetId: string;
+}
+
+export interface CancelHomeVetBookingRequest {
+    reason?: string;
+}
+
+export interface CompleteHomeVetBookingRequest {
+    visitNotes?: string;
+    diagnosis?: string;
+}
+
+export interface ListHomeVetBookingsParams {
+    status?: ApiHomeVetBookingStatus;
+    fromDate?: string;
+    toDate?: string;
+    ownerId?: string;
+    vetId?: string;
+    petId?: string;
+    page?: number;
+    pageSize?: number;
+}

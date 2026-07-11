@@ -7,7 +7,6 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PassportPrismaService } from '../../prisma/passport-prisma.service';
 import {
     CreateCampaignData,
     CreateRegistrationData,
@@ -31,6 +30,13 @@ import {
  *   - markAttended cambia status + attendedAt atómicamente.
  *   - Cancelar una inscripción la marca CANCELLED (no se borra para
  *     conservar histórico de auditoría de la campaña).
+ *
+ * Importante: NO inyectar `PassportPrismaService` aquí. El servicio solo
+ * opera sobre el tenant del request (scopeado por PrismaService +
+ * tenant middleware). Inyectar PassportPrismaService dispara un
+ * warning de runtime aunque no se use, y abre la puerta a fugas
+ * cross-tenant accidentales. Si necesitas una lectura cross-tenant,
+ * hazla explícitamente desde `passport.service` o `consent.service`.
  */
 @Injectable()
 export class VaccinationCampaignsService {
@@ -40,7 +46,6 @@ export class VaccinationCampaignsService {
         @Inject(VACCINATION_REGISTRATION_REPOSITORY)
         private readonly registrationRepo: IVaccinationRegistrationRepository,
         private readonly prisma: PrismaService,
-        private readonly passportPrisma: PassportPrismaService,
     ) {}
 
     // ── Campaigns ───────────────────────────────────────────────────────────
