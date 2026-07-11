@@ -246,6 +246,8 @@ model Tenant {
   vaccinationCampaigns       VaccinationCampaign[]        @relation("VaccinationCampaignTenant")
   vaccinationRegistrations   VaccinationRegistration[]   @relation("VaccinationRegistrationTenant")
   homeVetBookings            HomeVetBooking[]             @relation("HomeVetBookingTenant")
+  postopPlans                PostOpPlan[]                 @relation("PostOpPlanTenant")
+  postopCheckins             PostOpCheckin[]              @relation("PostOpCheckinTenant")
 
   @@map("tenants")
 }
@@ -347,6 +349,10 @@ model User {
   vaccinationRegistrations   VaccinationRegistration[]  @relation("VaccinationRegistrationOwner")
   homeVetBookingsRequested  HomeVetBooking[]           @relation("HomeVetBookingOwner")
   homeVetBookingsAssigned   HomeVetBooking[]           @relation("HomeVetBookingVet")
+  postopPlansAsOwner         PostOpPlan[]                @relation("PostOpPlanOwner")
+  postopPlansAsVet           PostOpPlan[]                @relation("PostOpPlanVet")
+  postopCheckinsAsOwner      PostOpCheckin[]             @relation("PostOpCheckinOwner")
+  postopCheckinsReviewed     PostOpCheckin[]             @relation("PostOpCheckinReviewer")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -428,6 +434,7 @@ model Pet {
   membershipSubscriptions MembershipSubscription[]
   vaccinationRegistrations VaccinationRegistration[]
   homeVetBookings        HomeVetBooking[]
+  postopPlans       PostOpPlan[]
 
   @@index([tenantId])
   @@index([ownerId])
@@ -586,9 +593,9 @@ model MedicalRecord {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  pet              Pet                     @relation(fields: [petId], references: [id])
-  vet              User                     @relation(fields: [vetId], references: [id])
-  appointment      Appointment?            @relation(fields: [appointmentId], references: [id])
+  pet         Pet          @relation(fields: [petId], references: [id])
+  vet         User         @relation(fields: [vetId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
   fileAttachments  MedicalRecordAttachment[]
 
   @@index([petId])
@@ -691,6 +698,7 @@ model Surgery {
   pet         Pet          @relation(fields: [petId], references: [id])
   vet         User         @relation(fields: [vetId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  postopPlans PostOpPlan[] @relation("PostOpPlanSurgery")
 
   @@index([tenantId])
   @@index([petId])
@@ -1477,4 +1485,85 @@ model HomeVetBooking {
   @@index([petId])
   @@index([vetId])
   @@map("home_vet_bookings")
+}
+
+// ─── Fase 3 · Slice 3 — Seguimiento postoperatorio ─────────────────────────
+
+enum PostOpPlanStatus {
+  ACTIVE      // plan vigente, esperando checkins del dueño
+  COMPLETED   // período de recuperación cumplido
+  CANCELLED   // cancelado por el vet (no aplica o se derivó a otro plan)
+}
+
+enum PostOpCheckinStatus {
+  SUBMITTED   // el dueño subió el checkin (fotos, notas, peso)
+  REVIEWED    // el vet lo revisó y dejó comentarios
+  FLAGGED     // el vet marcó preocupación clínica (solicita consulta)
+}
+
+model PostOpPlan {
+  id                   String           @id @default(uuid())
+  tenantId             String           // clínica que creó el plan
+  petId                String
+  ownerId              String           // dueño responsable del cuidado
+  surgeryId            String?          // opcional: si nace de una cirugía registrada
+  vetId                String           // vet responsable de revisar los checkins
+  title                String           // ej: "Recuperación post-ovariohisterectomía"
+  instructions         String           // instrucciones escritas para el dueño
+  startDate            DateTime         // inicio del período de recuperación
+  endDate              DateTime         // cuándo se espera que concluya
+  checkinIntervalDays  Int              @default(2) // cada cuántos días el dueño debe reportar
+  status               PostOpPlanStatus @default(ACTIVE)
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  cancelReason         String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  tenant   Tenant          @relation("PostOpPlanTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  pet      Pet             @relation(fields: [petId], references: [id], onDelete: Cascade)
+  owner    User            @relation("PostOpPlanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  vet      User            @relation("PostOpPlanVet", fields: [vetId], references: [id])
+  surgery  Surgery?        @relation("PostOpPlanSurgery", fields: [surgeryId], references: [id])
+  checkins PostOpCheckin[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, petId])
+  @@index([ownerId])
+  @@index([vetId])
+  @@index([surgeryId])
+  @@index([endDate])
+  @@map("postop_plans")
+}
+
+model PostOpCheckin {
+  id            String             @id @default(uuid())
+  tenantId      String
+  planId        String
+  ownerId       String             // quien subió el checkin
+  submittedAt   DateTime           @default(now())
+  ownerNote     String?            // texto libre del dueño
+  photoUrls     String[]           // URLs de las fotos de la herida/recuperación
+  weightKg      Float?             // peso reportado en este checkin
+  appetite      String?            // "normal" | "bajo" | "sin apetito" (texto flexible)
+  energyLevel   String?            // "normal" | "bajo" | "letargico"
+  concernsFlag  Boolean            @default(false) // dueño marcó "tengo una preocupación"
+  vetNote       String?            // nota del vet al revisar
+  reviewedAt    DateTime?
+  reviewedById  String?            // vet que revisó
+  status        PostOpCheckinStatus @default(SUBMITTED)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  tenant     Tenant      @relation("PostOpCheckinTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  plan       PostOpPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  owner      User        @relation("PostOpCheckinOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  reviewedBy User?       @relation("PostOpCheckinReviewer", fields: [reviewedById], references: [id])
+
+  @@index([tenantId])
+  @@index([planId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([submittedAt])
+  @@map("postop_checkins")
 }

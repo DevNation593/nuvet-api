@@ -37,6 +37,8 @@ export enum PermissionModule {
   MEMBERSHIPS = 'memberships',
   // Fase 3 Slice 2: veterinario a domicilio.
   HOME_VET = 'home_vet',
+  // Fase 3 Slice 3: seguimiento postoperatorio.
+  POSTOP = 'postop',
 }
 
 export enum PermissionAction {
