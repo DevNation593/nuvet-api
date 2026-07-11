@@ -40,12 +40,10 @@ function buildService() {
     const prisma = {
         pet: { findFirst: jest.fn() },
     };
-    const passportPrisma = {} as any;
     const service = new VaccinationCampaignsService(
         campaignRepo,
         registrationRepo,
         prisma as any,
-        passportPrisma,
     );
     return { service, campaignRepo, registrationRepo, prisma };
 }

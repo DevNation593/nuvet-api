@@ -35,6 +35,8 @@ export enum PermissionModule {
   CONSENT = 'consent',
   // Fase 2: planes de membresía y suscripciones.
   MEMBERSHIPS = 'memberships',
+  // Fase 3 Slice 2: veterinario a domicilio.
+  HOME_VET = 'home_vet',
 }
 
 export enum PermissionAction {

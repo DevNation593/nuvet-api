@@ -245,6 +245,7 @@ model Tenant {
   billingAttempts        BillingAttempt[] @relation("BillingAttemptTenant")
   vaccinationCampaigns       VaccinationCampaign[]        @relation("VaccinationCampaignTenant")
   vaccinationRegistrations   VaccinationRegistration[]   @relation("VaccinationRegistrationTenant")
+  homeVetBookings            HomeVetBooking[]             @relation("HomeVetBookingTenant")
 
   @@map("tenants")
 }
@@ -344,6 +345,8 @@ model User {
   ownedMemberships        MembershipSubscription[] @relation("MembershipSubscriptionOwner")
   vaccinationCampaignsCreated VaccinationCampaign[]       @relation("VaccinationCampaignCreatedBy")
   vaccinationRegistrations   VaccinationRegistration[]  @relation("VaccinationRegistrationOwner")
+  homeVetBookingsRequested  HomeVetBooking[]           @relation("HomeVetBookingOwner")
+  homeVetBookingsAssigned   HomeVetBooking[]           @relation("HomeVetBookingVet")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -424,6 +427,7 @@ model Pet {
   consentShares   PetConsentShare[]
   membershipSubscriptions MembershipSubscription[]
   vaccinationRegistrations VaccinationRegistration[]
+  homeVetBookings        HomeVetBooking[]
 
   @@index([tenantId])
   @@index([ownerId])
@@ -1423,4 +1427,54 @@ model VaccinationRegistration {
   @@index([petId])
   @@index([ownerId])
   @@map("vaccination_registrations")
+}
+
+// ─── Fase 3 · Slice 2 · Veterinario a domicilio ──────────────────────────────
+
+enum HomeVetBookingStatus {
+  REQUESTED   // dueño pidió la visita, sin asignar
+  CONFIRMED   // clínica confirmó y asignó veterinario
+  EN_ROUTE    // vet va en camino
+  IN_PROGRESS // vet está atendiendo
+  COMPLETED   // visita realizada
+  CANCELLED   // cancelada por el dueño o por la clínica
+  NO_SHOW     // el dueño no estaba en la dirección
+}
+
+model HomeVetBooking {
+  id              String   @id @default(uuid())
+  tenantId        String
+  ownerId         String   // dueño que pide la visita
+  petId           String
+  vetId           String?  // asignado por la clínica
+  scheduledAt     DateTime
+  address         String
+  addressNotes    String?
+  reason          String   // motivo de la visita
+  status          HomeVetBookingStatus @default(REQUESTED)
+  visitFeeCents   Int      @default(0)
+  travelFeeCents  Int      @default(0)
+  totalCents      Int      @default(0)
+  currency        String   @default("USD")
+  visitNotes      String?  // notas del vet después de la visita
+  diagnosis       String?
+  internalNotes   String?  // notas privadas del staff
+  cancelReason    String?
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation("HomeVetBookingTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  owner   User   @relation("HomeVetBookingOwner",  fields: [ownerId],  references: [id])
+  pet     Pet    @relation(fields: [petId], references: [id], onDelete: Cascade)
+  vet     User?  @relation("HomeVetBookingVet",   fields: [vetId],   references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, scheduledAt])
+  @@index([ownerId])
+  @@index([petId])
+  @@index([vetId])
+  @@map("home_vet_bookings")
 }
