@@ -3,6 +3,7 @@ dist
 !types/dist/
 api
 .env
+tsconfig.tsbuildinfo
 
 # Lockfile residual de npm — el repo usa pnpm (ver `packageManager` y
 # pnpm-lock.yaml). package-lock.json confunde a Dependabot duplicando el
