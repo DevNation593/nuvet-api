@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
     IAuthRepository,
@@ -7,6 +8,8 @@ import {
     CreateRefreshTokenData,
     PasswordResetTokenRecord,
     EmailVerificationTokenRecord,
+    TenantSummary,
+    CreateUserData,
 } from '../../domain/auth.repository';
 
 @Injectable()
@@ -135,5 +138,49 @@ export class PrismaAuthRepository implements IAuthRepository {
             where: { id: userId },
             data: { emailVerified: true },
         });
+    }
+
+    async findActiveTenantBySlug(slug: string): Promise<TenantSummary | null> {
+        const tenant = await this.prisma.tenant.findFirst({
+            where: { slug, isActive: true },
+            select: { id: true, name: true, slug: true, plan: true, isActive: true, logoUrl: true },
+        });
+        return tenant;
+    }
+
+    async findFirstActiveTenant(): Promise<TenantSummary | null> {
+        const tenant = await this.prisma.tenant.findFirst({
+            where: { isActive: true },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, name: true, slug: true, plan: true, isActive: true, logoUrl: true },
+        });
+        return tenant;
+    }
+
+    async countUsersByEmailInTenant(email: string, tenantId: string): Promise<number> {
+        return this.prisma.user.count({
+            where: {
+                email: { equals: email, mode: 'insensitive' },
+                tenantId,
+            },
+        });
+    }
+
+    async createUser(data: CreateUserData): Promise<UserWithTenant> {
+        return this.prisma.user.create({
+            data: {
+                tenantId: data.tenantId,
+                email: data.email.trim().toLowerCase(),
+                passwordHash: data.passwordHash,
+                role: data.role as UserRole,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                phone: data.phone ?? null,
+                isActive: data.isActive ?? true,
+            },
+            include: {
+                tenant: { select: { id: true, name: true, slug: true, plan: true, logoUrl: true } },
+            },
+        }) as unknown as UserWithTenant;
     }
 }

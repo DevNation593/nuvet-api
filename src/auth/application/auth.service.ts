@@ -4,6 +4,7 @@
     UnauthorizedException,
     NotFoundException,
     BadRequestException,
+    ConflictException,
     Inject,
     Logger,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import {
     ForgotPasswordDto,
     LoginDto,
     RefreshTokenDto,
+    RegisterClientDto,
     RegisterDto,
     ResetPasswordDto,
     UpdateProfileDto,
@@ -253,6 +255,77 @@ export class AuthService {
         throw new ForbiddenException(
             'El registro publico esta deshabilitado. Solicita tus credenciales al administrador.',
         );
+    }
+
+    /**
+     * Registro público de un cliente (dueño de mascota) en una clínica
+     * existente. Devuelve una sesión lista para auto-login.
+     *
+     * Si el cliente omite `tenantSlug`, se usa la primera clínica
+     * activa del sistema. Pensado para el signup de la app móvil.
+     */
+    async registerClient(dto: RegisterClientDto) {
+        const normalizedEmail = dto.email.trim().toLowerCase();
+
+        const tenant = dto.tenantSlug
+            ? await this.authRepo.findActiveTenantBySlug(dto.tenantSlug)
+            : await this.authRepo.findFirstActiveTenant();
+
+        if (!tenant) {
+            throw new BadRequestException(
+                dto.tenantSlug
+                    ? `No se encontró la clínica "${dto.tenantSlug}" o está inactiva.`
+                    : 'No hay clínicas activas registradas. Contacta al administrador.',
+            );
+        }
+
+        const existingCount = await this.authRepo.countUsersByEmailInTenant(
+            normalizedEmail,
+            tenant.id,
+        );
+        if (existingCount > 0) {
+            throw new ConflictException(
+                'Ya existe una cuenta con este correo en esta clínica. Inicia sesión.',
+            );
+        }
+
+        const passwordHash = await bcrypt.hash(dto.password, 12);
+        const created = await this.authRepo.createUser({
+            tenantId: tenant.id,
+            email: normalizedEmail,
+            passwordHash,
+            role: UserRole.CLIENT,
+            firstName: dto.firstName.trim(),
+            lastName: dto.lastName.trim(),
+            phone: dto.phone?.trim(),
+            isActive: true,
+        });
+
+        const typedRole = this.toUserRole(created.role);
+        const typedPlan = this.toTenantPlan(tenant.plan);
+        const permissions =
+            typedRole && typedPlan
+                ? this.getEffectivePermissionsForUser(typedRole, typedPlan)
+                : [];
+        const tokens = await this.generateTokens(
+            created.id,
+            created.tenantId,
+            created.role,
+            created.email,
+            typedPlan ?? TenantPlan.FREE,
+            permissions,
+        );
+
+        this.logger.log(
+            `New client registered: ${created.email} (tenant=${tenant.slug}, id=${created.id})`,
+        );
+
+        return {
+            user: this.sanitizeUser(created as unknown as Record<string, unknown>),
+            tenant,
+            recommendPasswordChange: true,
+            ...tokens,
+        };
     }
 
     async login(dto: LoginDto) {

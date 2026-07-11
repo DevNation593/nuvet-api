@@ -16,6 +16,7 @@ import {
     ForgotPasswordDto,
     LoginDto,
     RefreshTokenDto,
+    RegisterClientDto,
     RegisterDto,
     ResetPasswordDto,
     UpdateProfileDto,
@@ -37,6 +38,20 @@ export class AuthController {
     @ApiResponse({ status: 403, description: 'Public registration is disabled' })
     register(@Body() dto: RegisterDto) {
         return this.authService.register(dto);
+    }
+
+    @Post('register-client')
+    @Public()
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({
+        summary:
+            'Registro público de un cliente (dueño de mascota) en una clínica existente. Devuelve sesión lista para auto-login.',
+    })
+    @ApiResponse({ status: 201, description: 'Cuenta creada, sesión devuelta' })
+    @ApiResponse({ status: 400, description: 'tenantSlug inválido o sin clínicas activas' })
+    @ApiResponse({ status: 409, description: 'Email ya registrado en esta clínica' })
+    registerClient(@Body() dto: RegisterClientDto) {
+        return this.authService.registerClient(dto);
     }
 
     @Post('login')

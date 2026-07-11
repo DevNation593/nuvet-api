@@ -134,3 +134,58 @@ export class UpdateProfileDto {
     @MaxLength(30)
     phone?: string;
 }
+
+/**
+ * Registro de un cliente (dueño de mascota) en una clínica existente.
+ *
+ * A diferencia de `RegisterDto` (que crea una clínica nueva y un
+ * CLINIC_ADMIN), este endpoint crea un `User` con rol `CLIENT` y lo
+ * vincula a un tenant ya existente (identificado por `tenantSlug`).
+ * Devuelve una sesión lista para auto-login.
+ */
+export class RegisterClientDto {
+    @ApiProperty({ example: 'María' })
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(50)
+    firstName!: string;
+
+    @ApiProperty({ example: 'González' })
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(50)
+    lastName!: string;
+
+    @ApiProperty({ example: 'maria.gonzalez@happypaws.com' })
+    @IsEmail()
+    email!: string;
+
+    @ApiProperty({ example: 'SecurePass123!', minLength: 8 })
+    @IsString()
+    @MinLength(8)
+    @MaxLength(64)
+    @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+        message:
+            'La contraseña debe tener mayúscula, minúscula y un número o símbolo',
+    })
+    password!: string;
+
+    @ApiPropertyOptional({ example: '+593991000001' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(30)
+    phone?: string;
+
+    @ApiPropertyOptional({
+        example: 'nuvet-clinic',
+        description:
+            'Slug de la clínica donde se registra el cliente. Si se omite, se usa la primera clínica activa.',
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(100)
+    @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+        message: 'tenantSlug debe estar en formato slug (ej. nuvet-clinic)',
+    })
+    tenantSlug?: string;
+}
