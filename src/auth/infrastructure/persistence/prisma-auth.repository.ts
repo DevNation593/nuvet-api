@@ -143,7 +143,18 @@ export class PrismaAuthRepository implements IAuthRepository {
     async findActiveTenantBySlug(slug: string): Promise<TenantSummary | null> {
         const tenant = await this.prisma.tenant.findFirst({
             where: { slug, isActive: true },
-            select: { id: true, name: true, slug: true, plan: true, isActive: true, logoUrl: true },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                plan: true,
+                isActive: true,
+                logoUrl: true,
+                address: true,
+                phone: true,
+                email: true,
+                website: true,
+            },
         });
         return tenant;
     }
@@ -152,7 +163,18 @@ export class PrismaAuthRepository implements IAuthRepository {
         const tenant = await this.prisma.tenant.findFirst({
             where: { isActive: true },
             orderBy: { createdAt: 'asc' },
-            select: { id: true, name: true, slug: true, plan: true, isActive: true, logoUrl: true },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                plan: true,
+                isActive: true,
+                logoUrl: true,
+                address: true,
+                phone: true,
+                email: true,
+                website: true,
+            },
         });
         return tenant;
     }

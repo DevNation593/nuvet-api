@@ -45,6 +45,10 @@ export interface TenantSummary {
     plan: string;
     isActive: boolean;
     logoUrl?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
 }
 
 export interface CreateUserData {

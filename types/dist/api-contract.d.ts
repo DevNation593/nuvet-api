@@ -255,6 +255,10 @@ export interface ApiAuthTenant {
     slug: string;
     plan: ApiTenantPlan;
     logoUrl?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
 }
 export interface AuthUser {
     id: string;
