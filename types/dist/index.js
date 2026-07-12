@@ -164,7 +164,13 @@ exports.ROLE_PERMISSIONS = {
         `${PermissionModule.POSTOP}:${PermissionAction.CREATE}`,
         `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
         `${PermissionModule.NOTIFICATIONS}:${PermissionAction.UPDATE}`,
-        // Fase 2: el dueño de la mascota emite/revoca/consulta sus propios tokens.
+        // Fase 1: pasaporte médico. Los controllers de passport y consent
+        // requieren permisos del módulo PASSPORT (no CONSENT), así que el
+        // cliente necesita los cuatro para ver/crear/revocar su propio
+        // pasaporte y consentimientos cross-clinic.
+        ...permissionsForModule(PermissionModule.PASSPORT),
+        // Fase 2: el dueño de la mascota emite/revoca/consulta sus propios
+        // tokens de consent (módulo independiente que también usa el cliente).
         ...permissionsForModule(PermissionModule.CONSENT),
     ],
 };
