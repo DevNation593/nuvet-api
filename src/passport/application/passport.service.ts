@@ -310,6 +310,14 @@ export class PassportService {
             return { sourceTenantId: pet.tenantId };
         }
 
+        const isCrossTenantStaff =
+            actor.role === UserRole.CLINIC_ADMIN ||
+            actor.role === UserRole.VET ||
+            actor.role === UserRole.RECEPTIONIST;
+        if (!isCrossTenantStaff) {
+            throw new ForbiddenException('Only clinic staff can access cross-tenant passports');
+        }
+
         // Cross-tenant: requiere Consent GRANTED y activo.
         const grant = await this.consentService.findActiveGrantForPetAndTenant(
             petId,

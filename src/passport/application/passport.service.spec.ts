@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { PassportService } from './passport.service';
 
 /**
@@ -81,6 +82,7 @@ function buildPassportMocks() {
 }
 
 const owner = { sub: 'owner-1', tenantId: 'tenant-A', role: 'CLIENT' as const };
+const clientOther = { sub: 'owner-2', tenantId: 'tenant-B', role: 'CLIENT' as const };
 const staffSame = { sub: 'vet-1', tenantId: 'tenant-A', role: 'VET' as const };
 const staffOther = { sub: 'vet-2', tenantId: 'tenant-B', role: 'VET' as const };
 
@@ -128,6 +130,17 @@ describe('PassportService.getPetPassport', () => {
             service.getPetPassport(staffOther, 'pet-1', {}),
         ).resolves.toBeDefined();
         expect(auditWriter.write).toHaveBeenCalled();
+    });
+
+    it('rechaza a un cliente cross-tenant antes de consultar el consent activo', async () => {
+        const { service, consentService } = buildPassportMocks();
+        consentService.findActiveGrantForPetAndTenant.mockResolvedValueOnce({
+            id: 'consent-1',
+        });
+
+        await expect(service.getPetPassport(clientOther, 'pet-1', {}))
+            .rejects.toBeInstanceOf(ForbiddenException);
+        expect(consentService.findActiveGrantForPetAndTenant).not.toHaveBeenCalled();
     });
 
     it('proyecta solo campos publicables del historial medico', async () => {
