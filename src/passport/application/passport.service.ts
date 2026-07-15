@@ -293,9 +293,9 @@ export class PassportService {
     ): Promise<{ sourceTenantId: string; consentId?: string }> {
         const pet = await this.passportPrisma.client.pet.findUnique({
             where: { id: petId },
-            select: { id: true, ownerId: true, tenantId: true },
+            select: { id: true, ownerId: true, tenantId: true, isActive: true },
         });
-        if (!pet) throw new NotFoundException('Pet not found');
+        if (!pet || !pet.isActive) throw new NotFoundException('Pet not found');
 
         // Mismo tenant: staff u owner con lectura libre.
         if (actor.tenantId === pet.tenantId) {
@@ -331,7 +331,7 @@ export class PassportService {
                 tenant: { select: { id: true, name: true } },
             },
         });
-        if (!pet) throw new NotFoundException('Pet not found');
+        if (!pet || !pet.isActive) throw new NotFoundException('Pet not found');
 
         const [vaccines, records, surgeries] = await Promise.all([
             this.passportPrisma.client.vaccination.findMany({
