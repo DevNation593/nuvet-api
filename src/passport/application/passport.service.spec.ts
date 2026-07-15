@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PassportService } from './passport.service';
 
 /**
@@ -82,9 +82,11 @@ function buildPassportMocks() {
 }
 
 const owner = { sub: 'owner-1', tenantId: 'tenant-A', role: 'CLIENT' as const };
+const clientSameTenant = { sub: 'owner-2', tenantId: 'tenant-A', role: 'CLIENT' as const };
 const clientOther = { sub: 'owner-2', tenantId: 'tenant-B', role: 'CLIENT' as const };
 const staffSame = { sub: 'vet-1', tenantId: 'tenant-A', role: 'VET' as const };
 const staffOther = { sub: 'vet-2', tenantId: 'tenant-B', role: 'VET' as const };
+const receptionist = { sub: 'receptionist-1', tenantId: 'tenant-A', role: 'RECEPTIONIST' as const };
 
 describe('PassportService.getPetPassport', () => {
     it('trata una mascota inactiva como no encontrada', async () => {
@@ -100,6 +102,15 @@ describe('PassportService.getPetPassport', () => {
         await expect(
             service.getPetPassport(owner, 'pet-1', {}),
         ).resolves.toBeDefined();
+    });
+
+    it('rechaza acceso same-tenant a un cliente que no es dueño', async () => {
+        const { service, vaccinationFindMany } = buildPassportMocks();
+
+        await expect(
+            service.getPetPassport(clientSameTenant, 'pet-1', {}),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(vaccinationFindMany).not.toHaveBeenCalled();
     });
 
     it('permite acceso same-tenant a staff de la clínica dueña', async () => {
@@ -141,6 +152,13 @@ describe('PassportService.getPetPassport', () => {
         await expect(service.getPetPassport(clientOther, 'pet-1', {}))
             .rejects.toBeInstanceOf(ForbiddenException);
         expect(consentService.findActiveGrantForPetAndTenant).not.toHaveBeenCalled();
+    });
+
+    it('rechaza a un cliente al buscar por microchip', async () => {
+        const { service } = buildPassportMocks();
+
+        await expect(service.lookupByMicrochip(owner, '123'))
+            .rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('proyecta solo campos publicables del historial medico', async () => {
@@ -197,13 +215,19 @@ describe('PassportService.createShare', () => {
     function buildShareMocks() {
         const findFirst = jest.fn();
         const shareCreate = jest.fn();
+        const shareFindUnique = jest.fn();
+        const shareUpdate = jest.fn();
         const prisma = {
             pet: { findFirst },
             petConsentShare: { findMany: jest.fn() },
         };
         const passportPrisma = {
             client: {
-                petConsentShare: { create: shareCreate },
+                petConsentShare: {
+                    create: shareCreate,
+                    findUnique: shareFindUnique,
+                    update: shareUpdate,
+                },
             },
         };
         const consentService = {
@@ -223,6 +247,8 @@ describe('PassportService.createShare', () => {
             ),
             findFirst,
             shareCreate,
+            shareFindUnique,
+            shareUpdate,
         };
     }
 
@@ -257,5 +283,52 @@ describe('PassportService.createShare', () => {
         const result = await service.createShare(actor, 'pet-1', 7, {});
         expect(result.token).toBe('generated-token');
         expect(result.shareUrl).toContain('generated-token');
+    });
+
+    it('rechaza al recepcionista al crear un share', async () => {
+        const { service } = buildShareMocks();
+
+        await expect(service.createShare(receptionist, 'pet-1', 7, {}))
+            .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('rechaza al recepcionista al revocar un share', async () => {
+        const { service, shareFindUnique } = buildShareMocks();
+
+        await expect(service.revokeShare(receptionist, 'share-1', {}))
+            .rejects.toBeInstanceOf(ForbiddenException);
+        expect(shareFindUnique).not.toHaveBeenCalled();
+    });
+});
+
+describe('PassportService.getByShareToken', () => {
+    it('trata un share de una mascota inactiva como no encontrado sin efectos secundarios', async () => {
+        const shareFindUnique = jest.fn().mockResolvedValue({
+            id: 'share-1',
+            petId: 'pet-1',
+            tenantId: 'tenant-A',
+            token: 'share-token',
+            revokedAt: null,
+            expiresAt: new Date(Date.now() + 60_000),
+        });
+        const shareUpdate = jest.fn();
+        const petFindUnique = jest.fn().mockResolvedValue({ ...PET_FULL, isActive: false });
+        const auditWriter = { write: jest.fn().mockResolvedValue(undefined) };
+        const service = new PassportService(
+            { pet: { findUnique: jest.fn() } } as any,
+            {
+                client: {
+                    pet: { findUnique: petFindUnique },
+                    petConsentShare: { findUnique: shareFindUnique, update: shareUpdate },
+                },
+            } as any,
+            {} as any,
+            auditWriter as any,
+        );
+
+        await expect(service.getByShareToken('share-token', {}))
+            .rejects.toBeInstanceOf(NotFoundException);
+        expect(shareUpdate).not.toHaveBeenCalled();
+        expect(auditWriter.write).not.toHaveBeenCalled();
     });
 });

@@ -174,6 +174,10 @@ export class PassportService {
         shareId: string,
         ctx: { ipAddress?: string; userAgent?: string },
     ): Promise<ShareResponseDto> {
+        if (actor.role !== UserRole.CLIENT && actor.role !== UserRole.CLINIC_ADMIN && actor.role !== UserRole.VET) {
+            throw new ForbiddenException('Only owners and clinic staff can revoke share tokens');
+        }
+
         const share = await this.passportPrisma.client.petConsentShare.findUnique({
             where: { id: shareId },
         });
