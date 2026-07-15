@@ -25,6 +25,7 @@ const PET_FULL = {
     weight: 12,
     allergies: null,
     isNeutered: false,
+    isActive: true,
     updatedAt: new Date(),
     tenant: { id: 'tenant-A', name: 'Clínica A' },
 };
@@ -48,12 +49,16 @@ function buildPassportMocks() {
 
     const prisma = { pet: { findUnique } };
 
+    const vaccinationFindMany = jest.fn().mockResolvedValue([]);
+    const medicalRecordFindMany = jest.fn().mockResolvedValue([]);
+    const surgeryFindMany = jest.fn().mockResolvedValue([]);
+
     const passportPrisma = {
         client: {
             pet: { findUnique },
-            vaccination: { findMany: jest.fn().mockResolvedValue([]) },
-            medicalRecord: { findMany: jest.fn().mockResolvedValue([]) },
-            surgery: { findMany: jest.fn().mockResolvedValue([]) },
+            vaccination: { findMany: vaccinationFindMany },
+            medicalRecord: { findMany: medicalRecordFindMany },
+            surgery: { findMany: surgeryFindMany },
         },
     };
 
@@ -64,7 +69,15 @@ function buildPassportMocks() {
         auditWriter,
     );
 
-    return { service, findUnique, consentService, auditWriter };
+    return {
+        service,
+        findUnique,
+        consentService,
+        auditWriter,
+        vaccinationFindMany,
+        medicalRecordFindMany,
+        surgeryFindMany,
+    };
 }
 
 const owner = { sub: 'owner-1', tenantId: 'tenant-A', role: 'CLIENT' as const };
@@ -72,6 +85,14 @@ const staffSame = { sub: 'vet-1', tenantId: 'tenant-A', role: 'VET' as const };
 const staffOther = { sub: 'vet-2', tenantId: 'tenant-B', role: 'VET' as const };
 
 describe('PassportService.getPetPassport', () => {
+    it('trata una mascota inactiva como no encontrada', async () => {
+        const { service, findUnique } = buildPassportMocks();
+        findUnique.mockResolvedValueOnce({ ...PET_FULL, isActive: false });
+
+        await expect(service.getPetPassport(owner, 'pet-1', {}))
+            .rejects.toThrow('Pet not found');
+    });
+
     it('permite acceso same-tenant al dueño de la mascota', async () => {
         const { service } = buildPassportMocks();
         await expect(
@@ -107,6 +128,55 @@ describe('PassportService.getPetPassport', () => {
             service.getPetPassport(staffOther, 'pet-1', {}),
         ).resolves.toBeDefined();
         expect(auditWriter.write).toHaveBeenCalled();
+    });
+
+    it('proyecta solo campos publicables del historial medico', async () => {
+        const { service, medicalRecordFindMany } = buildPassportMocks();
+        medicalRecordFindMany.mockResolvedValueOnce([{
+            id: 'record-1',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            chiefComplaint: 'Tos',
+            diagnosis: 'Irritacion',
+            treatment: 'Reposo',
+            prescriptions: 'PRIVATE PRESCRIPTION',
+            notes: 'PRIVATE NOTE',
+            vet: { firstName: 'Ana', lastName: 'Vet' },
+        }]);
+
+        const result = await service.getPetPassport(owner, 'pet-1', {});
+        expect(result.medicalRecords).toEqual([{
+            id: 'record-1',
+            date: new Date('2026-01-01T00:00:00.000Z'),
+            chiefComplaint: 'Tos',
+            diagnosis: 'Irritacion',
+            treatment: 'Reposo',
+            vetName: 'Ana Vet',
+        }]);
+        expect(result.medicalRecords[0]).not.toHaveProperty('prescriptions');
+        expect(result.medicalRecords[0]).not.toHaveProperty('notes');
+    });
+
+    it('consulta cada bloque clinico con limite 50 y orden descendente', async () => {
+        const { service, vaccinationFindMany, medicalRecordFindMany, surgeryFindMany } =
+            buildPassportMocks();
+
+        await service.getPetPassport(owner, 'pet-1', {});
+
+        expect(vaccinationFindMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: { petId: 'pet-1' },
+            orderBy: { administeredAt: 'desc' },
+            take: 50,
+        }));
+        expect(medicalRecordFindMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: { petId: 'pet-1' },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+        }));
+        expect(surgeryFindMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: { petId: 'pet-1' },
+            orderBy: { scheduledAt: 'desc' },
+            take: 50,
+        }));
     });
 });
 
