@@ -38,6 +38,30 @@ export interface UpdateUserProfileData {
     phone?: string;
 }
 
+export interface TenantSummary {
+    id: string;
+    name: string;
+    slug: string;
+    plan: string;
+    isActive: boolean;
+    logoUrl?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
+}
+
+export interface CreateUserData {
+    tenantId: string;
+    email: string;
+    passwordHash: string;
+    role: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    isActive?: boolean;
+}
+
 export interface PasswordResetTokenRecord {
     id: string;
     userId: string;
@@ -92,6 +116,31 @@ export interface IAuthRepository {
     markEmailVerificationTokenUsed(id: string): Promise<void>;
 
     markEmailVerified(userId: string): Promise<void>;
+
+    /**
+     * Devuelve el tenant activo cuyo slug coincide. null si no existe o
+     * está inactivo.
+     */
+    findActiveTenantBySlug(slug: string): Promise<TenantSummary | null>;
+
+    /**
+     * Primer tenant activo del sistema, ordenado por `createdAt`.
+     * Sirve como destino por defecto cuando el cliente omite
+     * `tenantSlug` en el registro.
+     */
+    findFirstActiveTenant(): Promise<TenantSummary | null>;
+
+    /**
+     * Cuenta usuarios con ese email dentro de un tenant (case-insensitive).
+     * Para detectar colisiones antes de crear.
+     */
+    countUsersByEmailInTenant(email: string, tenantId: string): Promise<number>;
+
+    /**
+     * Crea un nuevo usuario (sin disparar middleware de tenant scope:
+     * el caller ya pasó `tenantId` explícito).
+     */
+    createUser(data: CreateUserData): Promise<UserWithTenant>;
 }
 
 export const AUTH_REPOSITORY = Symbol('IAuthRepository');

@@ -15,6 +15,10 @@ const TENANT_SCOPED_MODELS = new Set([
     'ConsentToken', 'ConsentAccessLog',
     // Fase 2 · Slice 1 (membresías MVP): catálogo, suscripciones, auditoría de cobros.
     'MembershipPlan', 'MembershipSubscription', 'BillingAttempt',
+    // Fase 3 Slice 2 (home-vet): reservas a domicilio.
+    'HomeVetBooking',
+    // Fase 3 Slice 3 (postoperatorio): planes y checkins del dueño.
+    'PostOpPlan', 'PostOpCheckin',
 ]);
 
 function hasTenantId(model: string): boolean {

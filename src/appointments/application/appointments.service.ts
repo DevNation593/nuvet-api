@@ -138,7 +138,10 @@ export class AppointmentsService {
             return { slots: [], reason: 'Holiday: Closed' };
         }
 
-        const slots = this.buildSlots(targetDate, clinicHours, schedule, blocks, booked);
+        // El endpoint es per-staff, así que cada slot lleva su staffId
+        // para que el cliente (o el front) pueda mandar la cita ya con
+        // el vet/groomer asignado, sin tener que adivinarlo.
+        const slots = this.buildSlots(targetDate, clinicHours, schedule, blocks, booked, staffId);
         return { slots };
     }
 
@@ -201,7 +204,8 @@ export class AppointmentsService {
         schedule: { startTime: string; endTime: string } | null,
         blocks: Array<{ startTime: Date; endTime: Date }>,
         booked: Array<{ scheduledAt: Date; durationMinutes: number }>,
-    ): Array<{ time: string; available: boolean }> {
+        staffId?: string,
+    ): Array<{ time: string; available: boolean; staffId?: string }> {
         let startHour = 9, startMin = 0, endHour = 17, endMin = 0, isClosed = false;
 
         if (schedule) {
@@ -227,7 +231,7 @@ export class AppointmentsService {
         const dayEnd = new Date(targetDate);
         dayEnd.setHours(endHour, endMin, 0, 0);
 
-        const slots: Array<{ time: string; available: boolean }> = [];
+        const slots: Array<{ time: string; available: boolean; staffId?: string }> = [];
         let current = new Date(dayStart);
 
         while (current < dayEnd) {
@@ -238,7 +242,11 @@ export class AppointmentsService {
                 const end = new Date(start.getTime() + appt.durationMinutes * 60000);
                 return current < end && slotEnd > start;
             });
-            slots.push({ time: current.toISOString(), available: !inBlock && !isBooked });
+            slots.push({
+                time: current.toISOString(),
+                available: !inBlock && !isBooked,
+                ...(staffId ? { staffId } : {}),
+            });
             current = new Date(current.getTime() + 30 * 60000);
         }
 

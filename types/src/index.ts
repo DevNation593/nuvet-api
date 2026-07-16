@@ -37,6 +37,8 @@ export enum PermissionModule {
   MEMBERSHIPS = 'memberships',
   // Fase 3 Slice 2: veterinario a domicilio.
   HOME_VET = 'home_vet',
+  // Fase 3 Slice 3: seguimiento postoperatorio.
+  POSTOP = 'postop',
 }
 
 export enum PermissionAction {
@@ -129,14 +131,24 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
   ],
   [UserRole.CLIENT]: [
     `${PermissionModule.PETS}:${PermissionAction.READ}`,
+    `${PermissionModule.PETS}:${PermissionAction.CREATE}`,
+    `${PermissionModule.PETS}:${PermissionAction.UPDATE}`,
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.READ}`,
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.CREATE}`,
+    `${PermissionModule.APPOINTMENTS}:${PermissionAction.UPDATE}`,
     `${PermissionModule.APPOINTMENTS}:${PermissionAction.DELETE}`,
     `${PermissionModule.MEDICAL_RECORDS}:${PermissionAction.READ}`,
+    `${PermissionModule.MEDICAL_RECORDS}:${PermissionAction.CREATE}`,
     `${PermissionModule.STORE}:${PermissionAction.READ}`,
     `${PermissionModule.STORE}:${PermissionAction.CREATE}`,
     `${PermissionModule.ADOPTIONS}:${PermissionAction.READ}`,
     `${PermissionModule.ADOPTIONS}:${PermissionAction.CREATE}`,
+    `${PermissionModule.MEMBERSHIPS}:${PermissionAction.READ}`,
+    `${PermissionModule.HOME_VET}:${PermissionAction.READ}`,
+    `${PermissionModule.HOME_VET}:${PermissionAction.CREATE}`,
+    `${PermissionModule.VACCINATIONS}:${PermissionAction.READ}`,
+    `${PermissionModule.POSTOP}:${PermissionAction.READ}`,
+    `${PermissionModule.POSTOP}:${PermissionAction.CREATE}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.UPDATE}`,
     ...permissionsForModule(PermissionModule.PASSPORT),
@@ -342,6 +354,9 @@ export const PLAN_MODULES: Record<TenantPlan, PermissionModule[]> = {
     PermissionModule.BILLING,
     PermissionModule.PASSPORT,
     PermissionModule.CONSENT,
+    PermissionModule.MEMBERSHIPS,
+    PermissionModule.HOME_VET,
+    PermissionModule.POSTOP,
   ],
   [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };

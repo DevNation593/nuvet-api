@@ -1,21 +1,6 @@
-import type {
-    AdoptionStatus,
-    AestheticStatus,
-    AppPermission,
-    SurgeryStatus,
-    TenantPlan,
-    UserRole,
-    VaccinationStatus,
-} from './index';
-
+import type { AdoptionStatus, AestheticStatus, AppPermission, SurgeryStatus, TenantPlan, UserRole, VaccinationStatus } from './index';
 export type ApiAppointmentType = 'CONSULTATION' | 'VACCINATION' | 'AESTHETICS' | 'SURGERY' | 'CHECKUP';
-export type ApiAppointmentStatus =
-    | 'SCHEDULED'
-    | 'CONFIRMED'
-    | 'IN_PROGRESS'
-    | 'COMPLETED'
-    | 'CANCELLED'
-    | 'NO_SHOW';
+export type ApiAppointmentStatus = 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 export type ApiOrderStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
 export type ApiPetSpecies = 'DOG' | 'CAT' | 'BIRD' | 'RABBIT' | 'HAMSTER' | 'REPTILE' | 'OTHER';
 export type ApiPetSex = 'MALE' | 'FEMALE';
@@ -26,7 +11,6 @@ export type ApiVaccinationStatus = VaccinationStatus;
 export type ApiAestheticStatus = AestheticStatus;
 export type ApiSurgeryStatus = SurgeryStatus;
 export type ApiAdoptionStatus = AdoptionStatus;
-
 export interface ApiEnvelope<T> {
     success: boolean;
     data: T;
@@ -39,17 +23,14 @@ export interface ApiEnvelope<T> {
         hasPrevPage?: boolean;
     };
 }
-
 export interface LoginRequest {
     email: string;
     tenantSlug?: string;
     password: string;
 }
-
 export interface RefreshTokenRequest {
     refreshToken: string;
 }
-
 export interface RegisterRequest {
     clinicName: string;
     firstName: string;
@@ -58,18 +39,15 @@ export interface RegisterRequest {
     password: string;
     phone?: string;
 }
-
 export interface UpdateProfileRequest {
     firstName?: string;
     lastName?: string;
     phone?: string;
 }
-
 export interface ChangePasswordRequest {
     currentPassword: string;
     newPassword: string;
 }
-
 export interface UpdateTenantRequest {
     name?: string;
     phone?: string;
@@ -77,7 +55,6 @@ export interface UpdateTenantRequest {
     email?: string;
     website?: string;
 }
-
 export interface CreateUserRequest {
     email: string;
     firstName: string;
@@ -86,7 +63,6 @@ export interface CreateUserRequest {
     password: string;
     phone?: string;
 }
-
 export interface UpdateUserRequest {
     email?: string;
     firstName?: string;
@@ -96,7 +72,6 @@ export interface UpdateUserRequest {
     phone?: string;
     isActive?: boolean;
 }
-
 export interface CreateClientRequest {
     email: string;
     firstName: string;
@@ -106,7 +81,6 @@ export interface CreateClientRequest {
     identification?: string;
     billingAddress?: string;
 }
-
 export interface UpdateClientRequest {
     email?: string;
     firstName?: string;
@@ -117,7 +91,6 @@ export interface UpdateClientRequest {
     billingAddress?: string;
     isActive?: boolean;
 }
-
 export interface CreatePetRequest {
     ownerId: string;
     name: string;
@@ -132,9 +105,7 @@ export interface CreatePetRequest {
     isNeutered?: boolean;
     allergies?: string;
 }
-
 export type UpdatePetRequest = Partial<CreatePetRequest>;
-
 export interface CreateAppointmentRequest {
     petId: string;
     type: ApiAppointmentType;
@@ -145,13 +116,11 @@ export interface CreateAppointmentRequest {
     notes?: string;
     branchId?: string;
 }
-
 export interface UpdateAppointmentStatusRequest {
     status?: ApiAppointmentStatus;
     scheduledAt?: string;
     cancelReason?: string;
 }
-
 export interface CreateMedicalRecordRequest {
     petId: string;
     appointmentId?: string;
@@ -164,27 +133,22 @@ export interface CreateMedicalRecordRequest {
     temperature?: number;
     heartRate?: number;
 }
-
 export type UpdateMedicalRecordRequest = Partial<CreateMedicalRecordRequest>;
-
 export interface PresignUploadRequest {
     filename: string;
     contentType: string;
     folder: string;
 }
-
 export interface PresignUploadResponse {
     url: string;
     key: string;
 }
-
 export interface RegisterMedicalRecordAttachmentRequest {
     key: string;
     filename: string;
     contentType: string;
     size: number;
 }
-
 export interface CreateVaccinationRequest {
     petId: string;
     appointmentId?: string;
@@ -196,11 +160,9 @@ export interface CreateVaccinationRequest {
     nextDueAt?: string;
     notes?: string;
 }
-
 export interface UpdateVaccinationRequest extends Partial<CreateVaccinationRequest> {
     status?: ApiVaccinationStatus;
 }
-
 export interface CreateAestheticRequest {
     petId: string;
     groomerId: string;
@@ -210,11 +172,9 @@ export interface CreateAestheticRequest {
     price?: number;
     notes?: string;
 }
-
 export interface UpdateAestheticRequest extends Partial<CreateAestheticRequest> {
     status?: ApiAestheticStatus;
 }
-
 export interface CreateSurgeryRequest {
     petId: string;
     vetId: string;
@@ -230,34 +190,28 @@ export interface CreateSurgeryRequest {
     durationMinutes?: number;
     notes?: string;
 }
-
 export interface UpdateSurgeryRequest extends Partial<CreateSurgeryRequest> {
     status?: ApiSurgeryStatus;
 }
-
 export interface CreateAdoptionRequest {
     petId?: string;
     adoptionAnimalId?: string;
     notes?: string;
 }
-
 export interface ApplyAdoptionRequest {
     applicantName: string;
     applicantEmail: string;
     applicantPhone?: string;
     notes?: string;
 }
-
 export interface UpdateAdoptionStatusRequest {
     status: Extract<ApiAdoptionStatus, 'APPROVED' | 'REJECTED'>;
     rejectionReason?: string;
 }
-
 export interface CreateOrderItemRequest {
     productId: string;
     quantity: number;
 }
-
 export interface CreateProductRequest {
     name: string;
     sku: string;
@@ -267,41 +221,34 @@ export interface CreateProductRequest {
     stock?: number;
     lowStockThreshold?: number;
 }
-
 export interface UpdateProductRequest extends Partial<CreateProductRequest> {
     isActive?: boolean;
 }
-
 export interface StockAdjustmentRequest {
     type: 'IN' | 'OUT' | 'ADJUSTMENT';
     productId: string;
     quantity: number;
     reason?: string;
 }
-
 export interface CreateOrderRequest {
     items: CreateOrderItemRequest[];
     notes?: string;
 }
-
 export interface UpdateOrderStatusRequest {
     status: ApiOrderStatus;
 }
-
 export interface CreateNotificationTemplateRequest {
     key: string;
     channel: ApiNotificationChannel;
     subject?: string;
     bodyTemplate: string;
 }
-
 export interface TriggerNotificationRequest {
     key: string;
     userId: string;
     channel?: ApiNotificationChannel;
     data?: Record<string, unknown>;
 }
-
 export interface ApiAuthTenant {
     id: string;
     name: string;
@@ -313,7 +260,6 @@ export interface ApiAuthTenant {
     email?: string | null;
     website?: string | null;
 }
-
 export interface AuthUser {
     id: string;
     tenantId: string;
@@ -325,20 +271,15 @@ export interface AuthUser {
     permissions?: AppPermission[];
     tenant?: ApiAuthTenant;
 }
-
 export interface AuthSession {
     accessToken: string;
     refreshToken: string;
     user: AuthUser;
     recommendPasswordChange?: boolean;
 }
-
 export interface LoginResponse extends AuthSession {
     tenant?: ApiAuthTenant;
 }
-
-// ─── Fase 1 · Pasaporte médico + consentimiento interclínico ──────────────────
-
 /**
  * Los nombres de los enums coinciden con los valores que produce el cliente
  * Prisma del backend (`@prisma/client`). Usar los literales aquí garantiza
@@ -347,16 +288,7 @@ export interface LoginResponse extends AuthSession {
  */
 export type ApiConsentStatus = 'PENDING' | 'GRANTED' | 'REVOKED' | 'EXPIRED';
 export type ApiConsentScope = 'PASSPORT_READ' | 'MEDICAL_RECORDS_READ';
-export type ApiConsentAuditAction =
-    | 'CREATED'
-    | 'GRANTED'
-    | 'REVOKED'
-    | 'ACCESSED'
-    | 'SHARE_CREATED'
-    | 'SHARE_REVOKED'
-    | 'SHARE_ACCESSED'
-    | 'EXPIRED';
-
+export type ApiConsentAuditAction = 'CREATED' | 'GRANTED' | 'REVOKED' | 'ACCESSED' | 'SHARE_CREATED' | 'SHARE_REVOKED' | 'SHARE_ACCESSED' | 'EXPIRED';
 export interface Consent {
     id: string;
     petId: string;
@@ -374,7 +306,6 @@ export interface Consent {
     createdAt: string;
     updatedAt: string;
 }
-
 export interface GrantConsentRequest {
     petId: string;
     targetTenantId: string;
@@ -383,11 +314,9 @@ export interface GrantConsentRequest {
     message?: string;
     expiresAt?: string;
 }
-
 export interface RevokeConsentRequest {
     reason?: string;
 }
-
 export interface ListConsentsQuery {
     petId?: string;
     targetTenantId?: string;
@@ -395,7 +324,6 @@ export interface ListConsentsQuery {
     page?: number;
     limit?: number;
 }
-
 export interface PassportVaccine {
     id: string;
     vaccineName: string;
@@ -405,7 +333,6 @@ export interface PassportVaccine {
     nextDueAt: string | null;
     status: string;
 }
-
 export interface PassportMedicalRecord {
     id: string;
     date: string;
@@ -414,7 +341,6 @@ export interface PassportMedicalRecord {
     treatment: string;
     vetName: string | null;
 }
-
 export interface PassportSurgery {
     id: string;
     scheduledAt: string;
@@ -423,12 +349,10 @@ export interface PassportSurgery {
     status: string;
     postInstructions: string | null;
 }
-
 export interface PassportWeightEntry {
     date: string;
     weight: number;
 }
-
 export interface PassportPet {
     id: string;
     name: string;
@@ -442,14 +366,16 @@ export interface PassportPet {
     weight: number | null;
     allergies: string | null;
     isNeutered: boolean;
-    issuedBy: { tenantId: string; tenantName: string };
+    issuedBy: {
+        tenantId: string;
+        tenantName: string;
+    };
     vaccines: PassportVaccine[];
     medicalRecords: PassportMedicalRecord[];
     surgeries: PassportSurgery[];
     weightHistory: PassportWeightEntry[];
     generatedAt: string;
 }
-
 export interface PassportShare {
     id: string;
     petId: string;
@@ -461,12 +387,10 @@ export interface PassportShare {
     createdAt: string;
     shareUrl: string;
 }
-
 export interface CreatePassportShareRequest {
     petId: string;
     ttlDays?: number;
 }
-
 export interface PassportLookupResult {
     petId: string;
     petName: string;
@@ -474,21 +398,9 @@ export interface PassportLookupResult {
     sourceTenantName: string;
     microchip: string;
 }
-
-// ─── Fase 2 · Membresías (Slice 1) ────────────────────────────────────────────
-
 export type ApiMembershipBillingPeriod = 'MONTHLY' | 'ANNUAL';
-
-export type ApiMembershipSubscriptionStatus =
-    | 'PENDING'
-    | 'ACTIVE'
-    | 'PAUSED'
-    | 'CANCELLED'
-    | 'EXPIRED'
-    | 'PAST_DUE';
-
+export type ApiMembershipSubscriptionStatus = 'PENDING' | 'ACTIVE' | 'PAUSED' | 'CANCELLED' | 'EXPIRED' | 'PAST_DUE';
 export type ApiBillingProviderKind = 'MOCK' | 'STRIPE' | 'PAYPHONE';
-
 export interface MembershipPlan {
     id: string;
     tenantId: string;
@@ -499,13 +411,12 @@ export interface MembershipPlan {
     currency: string;
     billingPeriod: ApiMembershipBillingPeriod;
     includedBenefits: string[];
-    applicableSpecies: string[]; // serializamos como strings; el cliente los valida si quiere
+    applicableSpecies: string[];
     isActive: boolean;
     displayOrder: number;
     createdAt: string;
     updatedAt: string;
 }
-
 export interface MembershipSubscription {
     id: string;
     tenantId: string;
@@ -525,11 +436,12 @@ export interface MembershipSubscription {
     providerKind: ApiBillingProviderKind;
     createdAt: string;
     updatedAt: string;
-    // Expandidos opcionales cuando el backend los incluye:
     plan?: Pick<MembershipPlan, 'id' | 'name' | 'slug' | 'priceCents' | 'currency' | 'billingPeriod'>;
-    pet?: { id: string; name: string };
+    pet?: {
+        id: string;
+        name: string;
+    };
 }
-
 export interface CreateMembershipPlanRequest {
     name: string;
     slug: string;
@@ -542,31 +454,23 @@ export interface CreateMembershipPlanRequest {
     isActive?: boolean;
     displayOrder?: number;
 }
-
 export type UpdateMembershipPlanRequest = Partial<CreateMembershipPlanRequest>;
-
 export interface SubscribeToPlanRequest {
     petId: string;
     planId: string;
     paymentMethodToken?: string;
 }
-
 export interface CancelMembershipSubscriptionRequest {
     reason?: string;
 }
-
 export interface MembershipPlanListResponse {
     data: MembershipPlan[];
     total: number;
 }
-
 export interface MembershipSubscriptionListResponse {
     data: MembershipSubscription[];
     total: number;
 }
-
-// ─── Fase 2 · Consent tokens emitidos por email a terceros ───────────────────
-
 /**
  * Literales que coinciden 1:1 con los enums `ConsentTokenScope` /
  * `ConsentTokenStatus` / `ConsentAccessAction` del schema Prisma.
@@ -576,7 +480,6 @@ export interface MembershipSubscriptionListResponse {
 export type ApiConsentTokenScope = 'READ' | 'FULL';
 export type ApiConsentTokenStatus = 'ACTIVE' | 'REVOKED' | 'EXPIRED';
 export type ApiConsentAccessAction = 'VALIDATE' | 'READ' | 'REVOKE';
-
 /**
  * Payload de creación de un token de consentimiento.
  * El emisor debe ser el dueño (CLIENT) o staff del mismo tenant que custodia
@@ -590,7 +493,6 @@ export interface CreateConsentTokenInput {
     expiresAt: string;
     auditReason?: string | null;
 }
-
 /**
  * Payload de actualización parcial (revocación). Cualquier subset de campos
  * actualizables puede enviarse; `status` se forzará a REVOKED si no se
@@ -601,7 +503,6 @@ export interface UpdateConsentTokenInput {
     expiresAt?: string;
     auditReason?: string | null;
 }
-
 /**
  * Payload para validar/canjear un token. Devuelve la entidad si está
  * vigente, lanza error en caso contrario.
@@ -609,7 +510,6 @@ export interface UpdateConsentTokenInput {
 export interface ValidateConsentTokenInput {
     tokenId: string;
 }
-
 export interface ConsentTokenView {
     id: string;
     tenantId: string;
@@ -624,7 +524,6 @@ export interface ConsentTokenView {
     revokedAt: string | null;
     auditReason: string | null;
 }
-
 export interface ConsentAccessLogView {
     id: string;
     tenantId: string;
@@ -636,7 +535,6 @@ export interface ConsentAccessLogView {
     userAgent: string | null;
     createdAt: string;
 }
-
 export interface ConsentAccessLogListResponse {
     success: true;
     data: ConsentAccessLogView[];
@@ -649,22 +547,8 @@ export interface ConsentAccessLogListResponse {
         hasPrevPage: boolean;
     };
 }
-
-// ─── Fase 3 · Campañas de vacunación (Slice 1) ────────────────────────────
-
-export type ApiVaccinationCampaignStatus =
-    | 'DRAFT'
-    | 'OPEN'
-    | 'CLOSED'
-    | 'COMPLETED'
-    | 'CANCELLED';
-
-export type ApiVaccinationRegistrationStatus =
-    | 'REGISTERED'
-    | 'ATTENDED'
-    | 'NO_SHOW'
-    | 'CANCELLED';
-
+export type ApiVaccinationCampaignStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'COMPLETED' | 'CANCELLED';
+export type ApiVaccinationRegistrationStatus = 'REGISTERED' | 'ATTENDED' | 'NO_SHOW' | 'CANCELLED';
 export interface VaccinationCampaign {
     id: string;
     tenantId: string;
@@ -684,7 +568,6 @@ export interface VaccinationCampaign {
     updatedAt: string;
     registrationCount?: number;
 }
-
 export interface VaccinationRegistration {
     id: string;
     tenantId: string;
@@ -696,10 +579,18 @@ export interface VaccinationRegistration {
     notes: string | null;
     createdAt: string;
     updatedAt: string;
-    pet?: { id: string; name: string; species: string };
-    owner?: { id: string; firstName: string; lastName: string; email: string };
+    pet?: {
+        id: string;
+        name: string;
+        species: string;
+    };
+    owner?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
 }
-
 export interface CreateVaccinationCampaignRequest {
     name: string;
     description?: string;
@@ -712,7 +603,6 @@ export interface CreateVaccinationCampaignRequest {
     currency?: string;
     notes?: string;
 }
-
 export interface UpdateVaccinationCampaignRequest {
     name?: string;
     description?: string;
@@ -726,28 +616,15 @@ export interface UpdateVaccinationCampaignRequest {
     notes?: string;
     status?: ApiVaccinationCampaignStatus;
 }
-
 export interface RegisterPetToCampaignRequest {
     petId: string;
     notes?: string;
 }
-
 export interface MarkRegistrationAttendedRequest {
     attendedAt?: string;
     notes?: string;
 }
-
-// ─── Fase 3 · Slice 2 · Veterinario a domicilio ──────────────────────────────
-
-export type ApiHomeVetBookingStatus =
-    | 'REQUESTED'
-    | 'CONFIRMED'
-    | 'EN_ROUTE'
-    | 'IN_PROGRESS'
-    | 'COMPLETED'
-    | 'CANCELLED'
-    | 'NO_SHOW';
-
+export type ApiHomeVetBookingStatus = 'REQUESTED' | 'CONFIRMED' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 export interface HomeVetBooking {
     id: string;
     tenantId: string;
@@ -771,11 +648,23 @@ export interface HomeVetBooking {
     completedAt: string | null;
     createdAt: string;
     updatedAt: string;
-    pet?: { id: string; name: string; species: string };
-    owner?: { id: string; firstName: string; lastName: string; email: string };
-    vet?: { id: string; firstName: string; lastName: string } | null;
+    pet?: {
+        id: string;
+        name: string;
+        species: string;
+    };
+    owner?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
+    vet?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+    } | null;
 }
-
 export interface CreateHomeVetBookingRequest {
     petId: string;
     scheduledAt: string;
@@ -788,7 +677,6 @@ export interface CreateHomeVetBookingRequest {
     currency?: string;
     ownerId?: string;
 }
-
 export interface UpdateHomeVetBookingRequest {
     scheduledAt?: string;
     address?: string;
@@ -802,20 +690,16 @@ export interface UpdateHomeVetBookingRequest {
     diagnosis?: string;
     internalNotes?: string;
 }
-
 export interface AssignVetRequest {
     vetId: string;
 }
-
 export interface CancelHomeVetBookingRequest {
     reason?: string;
 }
-
 export interface CompleteHomeVetBookingRequest {
     visitNotes?: string;
     diagnosis?: string;
 }
-
 export interface ListHomeVetBookingsParams {
     status?: ApiHomeVetBookingStatus;
     fromDate?: string;
@@ -826,12 +710,8 @@ export interface ListHomeVetBookingsParams {
     page?: number;
     pageSize?: number;
 }
-
-// ─── Fase 3 · Slice 3 · Seguimiento postoperatorio ───────────────────────────
-
 export type ApiPostOpPlanStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type ApiPostOpCheckinStatus = 'SUBMITTED' | 'REVIEWED' | 'FLAGGED';
-
 export interface PostOpPlan {
     id: string;
     tenantId: string;
@@ -850,12 +730,24 @@ export interface PostOpPlan {
     cancelReason: string | null;
     createdAt: string;
     updatedAt: string;
-    pet?: { id: string; name: string; species: string };
-    owner?: { id: string; firstName: string; lastName: string; email: string };
-    vet?: { id: string; firstName: string; lastName: string };
+    pet?: {
+        id: string;
+        name: string;
+        species: string;
+    };
+    owner?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
+    vet?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+    };
     checkins?: PostOpCheckin[];
 }
-
 export interface PostOpCheckin {
     id: string;
     tenantId: string;
@@ -874,10 +766,17 @@ export interface PostOpCheckin {
     status: ApiPostOpCheckinStatus;
     createdAt: string;
     updatedAt: string;
-    owner?: { id: string; firstName: string; lastName: string };
-    reviewedBy?: { id: string; firstName: string; lastName: string } | null;
+    owner?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+    };
+    reviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+    } | null;
 }
-
 export interface CreatePostOpPlanRequest {
     petId: string;
     ownerId: string;
@@ -889,7 +788,6 @@ export interface CreatePostOpPlanRequest {
     endDate: string;
     checkinIntervalDays?: number;
 }
-
 export interface UpdatePostOpPlanRequest {
     title?: string;
     instructions?: string;
@@ -897,11 +795,9 @@ export interface UpdatePostOpPlanRequest {
     endDate?: string;
     checkinIntervalDays?: number;
 }
-
 export interface CancelPostOpPlanRequest {
     reason?: string;
 }
-
 export interface CreatePostOpCheckinRequest {
     ownerNote?: string;
     photoUrls?: string[];
@@ -910,12 +806,10 @@ export interface CreatePostOpCheckinRequest {
     energyLevel?: string;
     concernsFlag?: boolean;
 }
-
 export interface ReviewPostOpCheckinRequest {
     vetNote?: string;
     flagged?: boolean;
 }
-
 export interface ListPostOpPlansParams {
     status?: ApiPostOpPlanStatus;
     petId?: string;

@@ -26,10 +26,16 @@ export class CreatePetDto {
     @ApiProperty({ enum: PetSex, example: PetSex.MALE })
     @IsEnum(PetSex)
     sex!: PetSex;
-    @ApiProperty({ description: 'Owner user ID' })
+    @ApiPropertyOptional({
+        description:
+            'Owner user ID. Opcional cuando el caller es un CLIENT — el controller ' +
+            'lo rellena con el sub del JWT para evitar que un cliente cree mascotas ' +
+            'a nombre de otros dueños.',
+    })
+    @IsOptional()
     @IsString()
     @IsNotEmpty()
-    ownerId!: string;
+    ownerId?: string;
     @ApiPropertyOptional({ example: 'Golden Retriever' })
     @IsOptional()
     @IsString()

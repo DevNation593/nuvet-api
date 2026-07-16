@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { UnauthorizedException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { AUTH_REPOSITORY } from '../domain/auth.repository';
@@ -44,6 +44,10 @@ const mockAuthRepo = {
     findEmailVerificationToken: jest.fn(),
     markEmailVerificationTokenUsed: jest.fn(),
     markEmailVerified: jest.fn(),
+    findActiveTenantBySlug: jest.fn(),
+    findFirstActiveTenant: jest.fn(),
+    countUsersByEmailInTenant: jest.fn(),
+    createUser: jest.fn(),
 };
 
 describe('AuthService', () => {
@@ -136,6 +140,123 @@ describe('AuthService', () => {
                     password: 'SecurePass1!',
                 }),
             ).rejects.toThrow(ForbiddenException);
+        });
+    });
+
+    describe('registerClient', () => {
+        const validDto = {
+            firstName: 'María',
+            lastName: 'González',
+            email: 'maria@example.com',
+            password: 'SecurePass1!',
+            phone: '+593991000001',
+        };
+        const mockTenant = {
+            id: 'tenant-1',
+            name: 'Test Clinic',
+            slug: 'nuvet-clinic',
+            plan: 'PRO',
+            isActive: true,
+        };
+        const mockNewUser = {
+            id: 'user-new',
+            email: 'maria@example.com',
+            passwordHash: 'hashed',
+            tenantId: 'tenant-1',
+            role: 'CLIENT',
+            firstName: 'María',
+            lastName: 'González',
+            isActive: true,
+            phone: '+593991000001',
+            tenant: {
+                id: 'tenant-1',
+                name: 'Test Clinic',
+                slug: 'nuvet-clinic',
+                plan: 'PRO',
+                isActive: true,
+            },
+        };
+
+        it('crea un CLIENT y devuelve sesión cuando tenantSlug es válido', async () => {
+            mockAuthRepo.findActiveTenantBySlug.mockResolvedValueOnce(mockTenant);
+            mockAuthRepo.countUsersByEmailInTenant.mockResolvedValueOnce(0);
+            mockAuthRepo.createUser.mockResolvedValueOnce(mockNewUser);
+            mockAuthRepo.createRefreshToken.mockResolvedValueOnce(undefined);
+
+            const result = await service.registerClient({
+                ...validDto,
+                tenantSlug: 'nuvet-clinic',
+            });
+
+            expect(mockAuthRepo.findActiveTenantBySlug).toHaveBeenCalledWith('nuvet-clinic');
+            expect(mockAuthRepo.countUsersByEmailInTenant).toHaveBeenCalledWith(
+                'maria@example.com',
+                'tenant-1',
+            );
+            expect(mockAuthRepo.createUser).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    tenantId: 'tenant-1',
+                    email: 'maria@example.com',
+                    role: 'CLIENT',
+                    firstName: 'María',
+                    lastName: 'González',
+                }),
+            );
+            expect((result.user as unknown as { role: string }).role).toBe('CLIENT');
+            expect(result.tenant.slug).toBe('nuvet-clinic');
+            expect(result.accessToken).toBe('mock-jwt-token');
+            expect(result.recommendPasswordChange).toBe(true);
+        });
+
+        it('usa la primera clínica activa cuando no se pasa tenantSlug', async () => {
+            mockAuthRepo.findFirstActiveTenant.mockResolvedValueOnce(mockTenant);
+            mockAuthRepo.countUsersByEmailInTenant.mockResolvedValueOnce(0);
+            mockAuthRepo.createUser.mockResolvedValueOnce(mockNewUser);
+            mockAuthRepo.createRefreshToken.mockResolvedValueOnce(undefined);
+
+            const result = await service.registerClient(validDto);
+            expect(mockAuthRepo.findFirstActiveTenant).toHaveBeenCalled();
+            expect(result.tenant.slug).toBe('nuvet-clinic');
+        });
+
+        it('rechaza con BadRequest si el tenantSlug no existe o está inactivo', async () => {
+            mockAuthRepo.findActiveTenantBySlug.mockResolvedValueOnce(null);
+            await expect(
+                service.registerClient({ ...validDto, tenantSlug: 'no-existe' }),
+            ).rejects.toBeInstanceOf(BadRequestException);
+            expect(mockAuthRepo.createUser).not.toHaveBeenCalled();
+        });
+
+        it('rechaza con BadRequest si no hay clínicas activas y no se pasó tenantSlug', async () => {
+            mockAuthRepo.findFirstActiveTenant.mockResolvedValueOnce(null);
+            await expect(service.registerClient(validDto)).rejects.toBeInstanceOf(
+                BadRequestException,
+            );
+        });
+
+        it('rechaza con Conflict si el email ya existe en la clínica', async () => {
+            mockAuthRepo.findActiveTenantBySlug.mockResolvedValueOnce(mockTenant);
+            mockAuthRepo.countUsersByEmailInTenant.mockResolvedValueOnce(1);
+            await expect(
+                service.registerClient({ ...validDto, tenantSlug: 'nuvet-clinic' }),
+            ).rejects.toBeInstanceOf(ConflictException);
+            expect(mockAuthRepo.createUser).not.toHaveBeenCalled();
+        });
+
+        it('normaliza el email a minúsculas antes de crear', async () => {
+            mockAuthRepo.findActiveTenantBySlug.mockResolvedValueOnce(mockTenant);
+            mockAuthRepo.countUsersByEmailInTenant.mockResolvedValueOnce(0);
+            mockAuthRepo.createUser.mockResolvedValueOnce(mockNewUser);
+            mockAuthRepo.createRefreshToken.mockResolvedValueOnce(undefined);
+
+            await service.registerClient({
+                ...validDto,
+                email: '  MARIA@Example.COM  ',
+                tenantSlug: 'nuvet-clinic',
+            });
+            expect(mockAuthRepo.createUser).toHaveBeenCalledWith(
+                expect.objectContaining({ email: 'maria@example.com' }),
+            );
         });
     });
 

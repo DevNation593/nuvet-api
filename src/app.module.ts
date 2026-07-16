@@ -19,6 +19,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { VaccinationsModule } from './vaccinations/vaccinations.module';
 import { HomeVetModule } from './home-vet/home-vet.module';
+import { PostOpModule } from './postop/postop.module';
 import { AestheticsModule } from './aesthetics/aesthetics.module';
 import { GroomingModule } from './grooming/grooming.module';
 import { SurgeriesModule } from './surgeries/surgeries.module';
@@ -38,6 +39,7 @@ import { AuditModule } from './audit/audit.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { ConsentModule } from './consent/consent.module';
 import { PassportModule } from './passport/passport.module';
+import { MembershipsModule } from './memberships/memberships.module';
 import { appConfig } from './config/app.config';
 import { billingConfig } from './config/billing.config';
 import { databaseConfig } from './config/database.config';
@@ -80,6 +82,7 @@ import { redisConfig } from './config/redis.config';
         MedicalRecordsModule,
         VaccinationsModule,
         HomeVetModule,
+        PostOpModule,
         AestheticsModule,
         GroomingModule,
         SurgeriesModule,
@@ -97,6 +100,7 @@ import { redisConfig } from './config/redis.config';
         AuditModule,
         ConsentModule,
         PassportModule,
+        MembershipsModule,
     ],
     providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },
