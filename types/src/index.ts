@@ -71,6 +71,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.VACCINATIONS}:${PermissionAction.CREATE}`,
     `${PermissionModule.VACCINATIONS}:${PermissionAction.UPDATE}`,
     ...permissionsForModule(PermissionModule.SURGERIES),
+    ...permissionsForModule(PermissionModule.PASSPORT),
     `${PermissionModule.BRANCHES}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.REPORTS}:${PermissionAction.READ}`,
@@ -86,6 +87,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.PETS}:${PermissionAction.CREATE}`,
     `${PermissionModule.PETS}:${PermissionAction.UPDATE}`,
     ...permissionsForModule(PermissionModule.CLIENTS),
+    `${PermissionModule.PASSPORT}:${PermissionAction.READ}`,
     `${PermissionModule.VACCINATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.VACCINATIONS}:${PermissionAction.CREATE}`,
     `${PermissionModule.AESTHETICS}:${PermissionAction.READ}`,
@@ -149,13 +151,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
     `${PermissionModule.POSTOP}:${PermissionAction.CREATE}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.READ}`,
     `${PermissionModule.NOTIFICATIONS}:${PermissionAction.UPDATE}`,
-    // Fase 1: pasaporte médico. Los controllers de passport y consent
-    // requieren permisos del módulo PASSPORT (no CONSENT), así que el
-    // cliente necesita los cuatro para ver/crear/revocar su propio
-    // pasaporte y consentimientos cross-clinic.
     ...permissionsForModule(PermissionModule.PASSPORT),
-    // Fase 2: el dueño de la mascota emite/revoca/consulta sus propios
-    // tokens de consent (módulo independiente que también usa el cliente).
+    // Fase 2: el dueño de la mascota emite/revoca/consulta sus propios tokens.
     ...permissionsForModule(PermissionModule.CONSENT),
   ],
 };
