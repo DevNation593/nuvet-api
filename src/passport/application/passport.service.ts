@@ -174,6 +174,10 @@ export class PassportService {
         shareId: string,
         ctx: { ipAddress?: string; userAgent?: string },
     ): Promise<ShareResponseDto> {
+        if (actor.role !== UserRole.CLIENT && actor.role !== UserRole.CLINIC_ADMIN && actor.role !== UserRole.VET) {
+            throw new ForbiddenException('Only owners and clinic staff can revoke share tokens');
+        }
+
         const share = await this.passportPrisma.client.petConsentShare.findUnique({
             where: { id: shareId },
         });
@@ -293,9 +297,9 @@ export class PassportService {
     ): Promise<{ sourceTenantId: string; consentId?: string }> {
         const pet = await this.passportPrisma.client.pet.findUnique({
             where: { id: petId },
-            select: { id: true, ownerId: true, tenantId: true },
+            select: { id: true, ownerId: true, tenantId: true, isActive: true },
         });
-        if (!pet) throw new NotFoundException('Pet not found');
+        if (!pet || !pet.isActive) throw new NotFoundException('Pet not found');
 
         // Mismo tenant: staff u owner con lectura libre.
         if (actor.tenantId === pet.tenantId) {
@@ -308,6 +312,14 @@ export class PassportService {
                 throw new ForbiddenException('Cannot access this pet passport');
             }
             return { sourceTenantId: pet.tenantId };
+        }
+
+        const isCrossTenantStaff =
+            actor.role === UserRole.CLINIC_ADMIN ||
+            actor.role === UserRole.VET ||
+            actor.role === UserRole.RECEPTIONIST;
+        if (!isCrossTenantStaff) {
+            throw new ForbiddenException('Only clinic staff can access cross-tenant passports');
         }
 
         // Cross-tenant: requiere Consent GRANTED y activo.
@@ -331,7 +343,7 @@ export class PassportService {
                 tenant: { select: { id: true, name: true } },
             },
         });
-        if (!pet) throw new NotFoundException('Pet not found');
+        if (!pet || !pet.isActive) throw new NotFoundException('Pet not found');
 
         const [vaccines, records, surgeries] = await Promise.all([
             this.passportPrisma.client.vaccination.findMany({

@@ -48,7 +48,7 @@ export class PassportController {
         summary:
             'Get aggregated passport of a pet (same tenant or cross-tenant with active consent)',
     })
-    @ApiResponse({ status: 200, type: Object })
+    @ApiResponse({ status: 200, type: PassportPublicPet })
     async getPetPassport(
         @CurrentUser() user: JwtPayload,
         @Param('petId') petId: string,

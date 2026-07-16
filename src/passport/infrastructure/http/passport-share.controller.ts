@@ -21,7 +21,7 @@ export class PassportShareController {
         summary:
             'Read a pet passport using a share token. Public — token is the credential.',
     })
-    @ApiResponse({ status: 200, type: Object })
+    @ApiResponse({ status: 200, type: PassportPublicPet })
     @ApiResponse({ status: 403, description: 'Token revoked or expired' })
     @ApiResponse({ status: 404, description: 'Token not found' })
     async getByToken(
