@@ -357,6 +357,9 @@ export const PLAN_MODULES: Record<TenantPlan, PermissionModule[]> = {
     PermissionModule.BILLING,
     PermissionModule.PASSPORT,
     PermissionModule.CONSENT,
+    PermissionModule.MEMBERSHIPS,
+    PermissionModule.HOME_VET,
+    PermissionModule.POSTOP,
   ],
   [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };

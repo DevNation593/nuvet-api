@@ -362,6 +362,9 @@ exports.PLAN_MODULES = {
         PermissionModule.BILLING,
         PermissionModule.PASSPORT,
         PermissionModule.CONSENT,
+        PermissionModule.MEMBERSHIPS,
+        PermissionModule.HOME_VET,
+        PermissionModule.POSTOP,
     ],
     [TenantPlan.ENTERPRISE]: Object.values(PermissionModule),
 };

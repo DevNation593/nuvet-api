@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { IPetRepository, PET_REPOSITORY } from '../domain/pet.repository';
 import { CreatePetDto, UpdatePetDto } from './dto/pet.dto';
 import { buildPaginatedResponse, buildPaginationArgs, PaginationQueryDto } from '../../common/dto/pagination.dto';
@@ -32,12 +32,18 @@ export class PetsService {
     }
 
     async create(tenantId: string, dto: CreatePetDto) {
+        if (!dto.ownerId) {
+            throw new BadRequestException(
+                'ownerId is required when creating a pet as clinic staff',
+            );
+        }
         const owner = await this.petRepo.findOwner(tenantId, dto.ownerId);
         if (!owner) throw new NotFoundException('Owner not found in this clinic');
 
         return this.petRepo.create({
             tenantId,
             ...dto,
+            ownerId: dto.ownerId,
             birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
         });
     }

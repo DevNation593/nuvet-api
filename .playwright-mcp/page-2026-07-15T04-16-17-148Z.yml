@@ -1,0 +1,276 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e6]:
+      - heading "Navigation Menu" [level=2] [ref=e7]
+      - generic [ref=e9]:
+        - button "Toggle navigation" [ref=e11] [cursor=pointer]
+        - link "Homepage" [ref=e17] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e20]:
+          - link "Sign in" [ref=e21] [cursor=pointer]:
+            - /url: /login?return_to=https%3A%2F%2Fgithub.com%2FDevNation593%2Fnuvet-api%2Fcompare%2Fdev...feat%2Ffase-1-pasaporte-medico%3Fexpand%3D1
+          - button "Appearance settings" [ref=e24] [cursor=pointer]
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e32]:
+          - link "DevNation593" [ref=e36] [cursor=pointer]:
+            - /url: /DevNation593
+          - generic [ref=e37]: /
+          - strong [ref=e38]:
+            - link "nuvet-api" [ref=e39] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api
+          - generic [ref=e40]: Public
+        - generic [ref=e41]:
+          - list:
+            - listitem [ref=e42]:
+              - link "You must be signed in to change notification settings" [ref=e43] [cursor=pointer]:
+                - /url: /login?return_to=%2FDevNation593%2Fnuvet-api
+                - text: Notifications
+            - listitem [ref=e46]:
+              - link "Fork 0" [ref=e47] [cursor=pointer]:
+                - /url: /login?return_to=%2FDevNation593%2Fnuvet-api
+                - text: Fork
+                - generic "0" [ref=e50]
+            - listitem [ref=e51]:
+              - link "You must be signed in to star a repository" [ref=e53] [cursor=pointer]:
+                - /url: /login?return_to=%2FDevNation593%2Fnuvet-api
+                - text: Star
+                - generic "0 users starred this repository" [ref=e56]: "0"
+      - navigation "Repository" [ref=e57]:
+        - list [ref=e58]:
+          - listitem [ref=e59]:
+            - link "Code" [ref=e60] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api
+          - listitem [ref=e64]:
+            - link "Issues" [ref=e65] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api/issues
+          - listitem [ref=e70]:
+            - link "Pull requests" [ref=e71] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api/pulls
+          - listitem [ref=e75]:
+            - link "Actions" [ref=e76] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api/actions
+          - listitem [ref=e80]:
+            - link "Projects" [ref=e81] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api/projects
+          - listitem [ref=e85]:
+            - link "Security and quality" [ref=e86] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api/security
+          - listitem [ref=e90]:
+            - link "Insights" [ref=e91] [cursor=pointer]:
+              - /url: /DevNation593/nuvet-api/pulse
+    - generic [ref=e97]:
+      - generic [ref=e98]:
+        - heading "Comparing changes" [level=1] [ref=e99]
+        - generic [ref=e100]:
+          - text: Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+          - button "compare across forks" [ref=e101] [cursor=pointer]
+          - text: or
+          - link "learn more about diff comparisons" [ref=e102] [cursor=pointer]:
+            - /url: https://docs.github.com/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-comparing-branches-in-pull-requests#three-dot-and-two-dot-git-diff-comparisons
+          - text: .
+      - generic [ref=e103]:
+        - group [ref=e107]:
+          - 'generic "base: dev" [ref=e108] [cursor=pointer]':
+            - generic [ref=e110]:
+              - text: "base:"
+              - generic [ref=e111]: dev
+        - generic [ref=e113]:
+          - 'img "Three-dot diff: changes since branches diverged" [ref=e114]'
+          - generic [ref=e116]: ...
+        - group [ref=e118]:
+          - 'generic "compare: feat/fase-1-pasaporte-medico" [ref=e119] [cursor=pointer]':
+            - generic [ref=e121]:
+              - text: "compare:"
+              - generic [ref=e122]: feat/fase-1-pasaporte-medico
+        - generic [ref=e123]:
+          - strong [ref=e124]: Able to merge.
+          - text: These branches can be automatically merged.
+      - list [ref=e128]:
+        - listitem [ref=e129]: 7 commits
+        - listitem [ref=e132]: 11 files changed
+        - listitem [ref=e135]: 1 contributor
+      - generic [ref=e143]:
+        - heading "Commits on Jul 15, 2026" [level=3] [ref=e144]
+        - list [ref=e145]:
+          - listitem [ref=e146]:
+            - generic [ref=e147]:
+              - paragraph [ref=e148]:
+                - 'link "docs(passport): add phase 1 design" [ref=e149] [cursor=pointer]':
+                  - /url: /DevNation593/nuvet-api/commit/08c0464aea8820d63343cca0001b0bc88b0a0ad2
+              - generic [ref=e150]:
+                - link [ref=e153] [cursor=pointer]:
+                  - /url: /TheWadjet-dev
+                  - img "@TheWadjet-dev" [ref=e154]
+                - generic [ref=e155]:
+                  - link "TheWadjet-dev" [ref=e156] [cursor=pointer]:
+                    - /url: /DevNation593/nuvet-api/commits?author=TheWadjet-dev
+                  - text: committed Jul 15, 20261 hour ago
+            - generic [ref=e157]:
+              - generic [ref=e158]:
+                - button "Copy the full SHA" [ref=e161] [cursor=pointer]
+                - link "08c0464" [ref=e167] [cursor=pointer]:
+                  - /url: /DevNation593/nuvet-api/commit/08c0464aea8820d63343cca0001b0bc88b0a0ad2
+              - link "Browse the repository at this point in the history" [ref=e172] [cursor=pointer]:
+                - /url: /DevNation593/nuvet-api/tree/08c0464aea8820d63343cca0001b0bc88b0a0ad2
+          - listitem [ref=e173]:
+            - generic [ref=e174]:
+              - paragraph [ref=e175]:
+                - 'link "docs(passport): add phase 1 implementation plan" [ref=e176] [cursor=pointer]':
+                  - /url: /DevNation593/nuvet-api/commit/47604328478a3ba5d8d7c5732618c1fd7b4d747c
+              - generic [ref=e177]:
+                - link [ref=e180] [cursor=pointer]:
+                  - /url: /TheWadjet-dev
+                  - img "@TheWadjet-dev" [ref=e181]
+                - generic [ref=e182]:
+                  - link "TheWadjet-dev" [ref=e183] [cursor=pointer]:
+                    - /url: /DevNation593/nuvet-api/commits?author=TheWadjet-dev
+                  - text: committed Jul 15, 20261 hour ago
+            - generic [ref=e184]:
+              - generic [ref=e185]:
+                - button "Copy the full SHA" [ref=e188] [cursor=pointer]
+                - link "4760432" [ref=e194] [cursor=pointer]:
+                  - /url: /DevNation593/nuvet-api/commit/47604328478a3ba5d8d7c5732618c1fd7b4d747c
+              - link "Browse the repository at this point in the history" [ref=e199] [cursor=pointer]:
+                - /url: /DevNation593/nuvet-api/tree/47604328478a3ba5d8d7c5732618c1fd7b4d747c
+          - listitem [ref=e200]:
+            - generic [ref=e201]:
+              - paragraph [ref=e202]:
+                - 'link "test(passport): cover passport boundaries and contract" [ref=e203] [cursor=pointer]':
+                  - /url: /DevNation593/nuvet-api/commit/15f66f3ac30467e937fc675709d6b1d17da172e0
+              - generic [ref=e204]:
+                - link [ref=e207] [cursor=pointer]:
+                  - /url: /TheWadjet-dev
+                  - img "@TheWadjet-dev" [ref=e208]
+                - generic [ref=e209]:
+                  - link "TheWadjet-dev" [ref=e210] [cursor=pointer]:
+                    - /url: /DevNation593/nuvet-api/commits?author=TheWadjet-dev
+                  - text: committed Jul 15, 20261 hour ago
+            - generic [ref=e211]:
+              - generic [ref=e212]:
+                - button "Copy the full SHA" [ref=e215] [cursor=pointer]
+                - link "15f66f3" [ref=e221] [cursor=pointer]:
+                  - /url: /DevNation593/nuvet-api/commit/15f66f3ac30467e937fc675709d6b1d17da172e0
+              - link "Browse the repository at this point in the history" [ref=e226] [cursor=pointer]:
+                - /url: /DevNation593/nuvet-api/tree/15f66f3ac30467e937fc675709d6b1d17da172e0
+          - listitem [ref=e227]:
+            - generic [ref=e228]:
+              - paragraph [ref=e229]:
+                - 'link "feat(passport): formalize passport response contract" [ref=e230] [cursor=pointer]':
+                  - /url: /DevNation593/nuvet-api/commit/1d7ec692dd4a5638b7d1d9d0bafc6aad747a0d48
+              - generic [ref=e231]:
+                - link [ref=e234] [cursor=pointer]:
+                  - /url: /TheWadjet-dev
+                  - img "@TheWadjet-dev" [ref=e235]
+                - generic [ref=e236]:
+                  - link "TheWadjet-dev" [ref=e237] [cursor=pointer]:
+                    - /url: /DevNation593/nuvet-api/commits?author=TheWadjet-dev
+                  - text: committed Jul 15, 202646 minutes ago
+            - generic [ref=e238]:
+              - generic [ref=e239]:
+                - button "Copy the full SHA" [ref=e242] [cursor=pointer]
+                - link "1d7ec69" [ref=e248] [cursor=pointer]:
+                  - /url: /DevNation593/nuvet-api/commit/1d7ec692dd4a5638b7d1d9d0bafc6aad747a0d48
+              - link "Browse the repository at this point in the history" [ref=e253] [cursor=pointer]:
+                - /url: /DevNation593/nuvet-api/tree/1d7ec692dd4a5638b7d1d9d0bafc6aad747a0d48
+          - listitem [ref=e254]:
+            - generic [ref=e255]:
+              - paragraph [ref=e256]:
+                - 'link "fix(passport): enforce passport access boundaries" [ref=e257] [cursor=pointer]':
+                  - /url: /DevNation593/nuvet-api/commit/92cc544d00bb0ec21418fc526b948f88adf19f2d
+              - generic [ref=e258]:
+                - link [ref=e261] [cursor=pointer]:
+                  - /url: /TheWadjet-dev
+                  - img "@TheWadjet-dev" [ref=e262]
+                - generic [ref=e263]:
+                  - link "TheWadjet-dev" [ref=e264] [cursor=pointer]:
+                    - /url: /DevNation593/nuvet-api/commits?author=TheWadjet-dev
+                  - text: committed Jul 15, 202638 minutes ago
+            - generic [ref=e265]:
+              - generic [ref=e266]:
+                - button "Copy the full SHA" [ref=e269] [cursor=pointer]
+                - link "92cc544" [ref=e275] [cursor=pointer]:
+                  - /url: /DevNation593/nuvet-api/commit/92cc544d00bb0ec21418fc526b948f88adf19f2d
+              - link "Browse the repository at this point in the history" [ref=e280] [cursor=pointer]:
+                - /url: /DevNation593/nuvet-api/tree/92cc544d00bb0ec21418fc526b948f88adf19f2d
+          - listitem [ref=e281]:
+            - generic [ref=e282]:
+              - paragraph [ref=e283]:
+                - 'link "fix(passport): reject cross-tenant client access" [ref=e284] [cursor=pointer]':
+                  - /url: /DevNation593/nuvet-api/commit/129af44da4839637c050ca2f4d14c30f6b023e62
+              - generic [ref=e285]:
+                - link [ref=e288] [cursor=pointer]:
+                  - /url: /TheWadjet-dev
+                  - img "@TheWadjet-dev" [ref=e289]
+                - generic [ref=e290]:
+                  - link "TheWadjet-dev" [ref=e291] [cursor=pointer]:
+                    - /url: /DevNation593/nuvet-api/commits?author=TheWadjet-dev
+                  - text: committed Jul 15, 202627 minutes ago
+            - generic [ref=e292]:
+              - generic [ref=e293]:
+                - button "Copy the full SHA" [ref=e296] [cursor=pointer]
+                - link "129af44" [ref=e302] [cursor=pointer]:
+                  - /url: /DevNation593/nuvet-api/commit/129af44da4839637c050ca2f4d14c30f6b023e62
+              - link "Browse the repository at this point in the history" [ref=e307] [cursor=pointer]:
+                - /url: /DevNation593/nuvet-api/tree/129af44da4839637c050ca2f4d14c30f6b023e62
+          - listitem [ref=e308]:
+            - generic [ref=e309]:
+              - paragraph [ref=e310]:
+                - 'link "fix(passport): close final review access gaps" [ref=e311] [cursor=pointer]':
+                  - /url: /DevNation593/nuvet-api/commit/5b06e97a223c02f99b9f71c8dab2cfe9b4e082f8
+              - generic [ref=e312]:
+                - link [ref=e315] [cursor=pointer]:
+                  - /url: /TheWadjet-dev
+                  - img "@TheWadjet-dev" [ref=e316]
+                - generic [ref=e317]:
+                  - link "TheWadjet-dev" [ref=e318] [cursor=pointer]:
+                    - /url: /DevNation593/nuvet-api/commits?author=TheWadjet-dev
+                  - text: committed Jul 15, 20266 minutes ago
+                - group [ref=e320]:
+                  - img "1 / 2 checks OK" [ref=e322] [cursor=pointer]
+            - generic [ref=e324]:
+              - generic [ref=e325]:
+                - button "Copy the full SHA" [ref=e328] [cursor=pointer]
+                - link "5b06e97" [ref=e334] [cursor=pointer]:
+                  - /url: /DevNation593/nuvet-api/commit/5b06e97a223c02f99b9f71c8dab2cfe9b4e082f8
+              - link "Browse the repository at this point in the history" [ref=e339] [cursor=pointer]:
+                - /url: /DevNation593/nuvet-api/tree/5b06e97a223c02f99b9f71c8dab2cfe9b4e082f8
+      - generic "Loading Files" [ref=e341]: Loading
+  - contentinfo [ref=e348]:
+    - heading "Footer" [level=2] [ref=e349]
+    - generic [ref=e350]:
+      - generic [ref=e351]:
+        - link "GitHub Homepage" [ref=e352] [cursor=pointer]:
+          - /url: https://github.com
+        - generic [ref=e355]: © 2026 GitHub, Inc.
+      - navigation "Footer" [ref=e356]:
+        - heading "Footer navigation" [level=3] [ref=e357]
+        - list "Footer navigation" [ref=e358]:
+          - listitem [ref=e359]:
+            - link "Terms" [ref=e360] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/github-terms/github-terms-of-service
+          - listitem [ref=e361]:
+            - link "Privacy" [ref=e362] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/privacy-policies/github-privacy-statement
+          - listitem [ref=e363]:
+            - link "Security" [ref=e364] [cursor=pointer]:
+              - /url: https://github.com/security
+          - listitem [ref=e365]:
+            - link "Status" [ref=e366] [cursor=pointer]:
+              - /url: https://www.githubstatus.com/
+          - listitem [ref=e367]:
+            - link "Community" [ref=e368] [cursor=pointer]:
+              - /url: https://github.community/
+          - listitem [ref=e369]:
+            - link "Docs" [ref=e370] [cursor=pointer]:
+              - /url: https://docs.github.com/
+          - listitem [ref=e371]:
+            - link "Contact" [ref=e372] [cursor=pointer]:
+              - /url: https://support.github.com?tags=dotcom-footer
+          - listitem [ref=e373]:
+            - button "Manage cookies" [ref=e375] [cursor=pointer]
+          - listitem [ref=e376]:
+            - button "Do not share my personal information" [ref=e378] [cursor=pointer]
